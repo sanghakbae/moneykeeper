@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import BudgetMeter from '../components/BudgetMeter.jsx'
 import AlertBanner from '../components/AlertBanner.jsx'
+import CategoryEditor from '../components/CategoryEditor.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { ACCOUNTS, displayName } from '../lib/accounts.js'
 import { formatNumber, formatWon } from '../lib/format.js'
@@ -9,9 +10,10 @@ import { budgetAlerts, monthlyBudgetReport } from '../lib/stats.js'
 import { saveBudget } from '../lib/store.js'
 
 export default function Settings() {
-  const { user, expenses, budgets, today, notify, logout } = useApp()
+  const { user, expenses, budgets, categories, today, notify, logout } = useApp()
   const [month, setMonth] = useState(today.slice(0, 7))
   const [editing, setEditing] = useState(false)
+  const [editingCategories, setEditingCategories] = useState(false)
 
   const budget = budgets[month]
   const report = useMemo(
@@ -62,8 +64,8 @@ export default function Settings() {
         </div>
 
         <p className="hint" style={{ marginTop: 12 }}>
-          이번 달 고정비 {formatWon(report.fixedTotal)}는 한도 계산에서 빠집니다 (보험료·전기세·가스비·관리비 등).
-          한도의 30% 이하가 남으면 경고가 표시됩니다.
+          이번 달 고정비·용돈 {formatWon(report.excludedTotal)}는 한도 계산에서 빠집니다
+          (보험료·전기세·가스비·관리비 등 고정비와 용돈). 한도의 30% 이하가 남으면 경고가 표시됩니다.
         </p>
 
         {user.isAdmin && (
@@ -77,6 +79,21 @@ export default function Settings() {
           </button>
         )}
       </div>
+
+      {user.isAdmin && (
+        <div className="card">
+          <div className="section-title">
+            <span>카테고리</span>
+            <span className="hint">{categories.length}개</span>
+          </div>
+          <p className="hint" style={{ marginBottom: 10 }}>
+            이름·아이콘·그룹·순서를 고치고, 한도에서 뺄 항목을 지정할 수 있습니다.
+          </p>
+          <button className="btn ghost" type="button" onClick={() => setEditingCategories(true)}>
+            카테고리 관리
+          </button>
+        </div>
+      )}
 
       <div className="card">
         <div className="section-title">
@@ -98,6 +115,16 @@ export default function Settings() {
       <button className="btn ghost" type="button" onClick={logout}>
         로그아웃
       </button>
+
+      {editingCategories && (
+        <CategoryEditor
+          categories={categories}
+          expenses={expenses}
+          user={user}
+          notify={notify}
+          onClose={() => setEditingCategories(false)}
+        />
+      )}
 
       {editing && (
         <BudgetSheet

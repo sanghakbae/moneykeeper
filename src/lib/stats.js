@@ -1,7 +1,7 @@
 // 집계·한도 계산. 브라우저 API 를 쓰지 않는 순수 함수라 node --test 로 검증한다.
 
 import { bucketKey } from './periods.js'
-import { isFixedCost } from './categories.js'
+import { isOffBudget } from './categories.js'
 
 /** 한도의 30% 가 남았을 때부터 경고 → 사용률 70% 이상이면 warn, 100% 이상이면 over */
 export const WARN_RATIO = 0.7
@@ -38,9 +38,12 @@ export function totalsByUser(expenses) {
     .sort((a, b) => b.total - a.total)
 }
 
-/** 생활비(변동비)만 남긴다 — 보험료·전기세·가스비·관리비 등 고정비는 한도에서 뺀다. */
+/**
+ * 생활비(변동비)만 남긴다.
+ * 보험료·전기세·가스비·관리비 등 고정비와 용돈은 한도에서 뺀다.
+ */
 export function livingExpenses(expenses) {
-  return expenses.filter((e) => !isFixedCost(e.categoryId))
+  return expenses.filter((e) => !isOffBudget(e.categoryId))
 }
 
 export function inMonth(expenses, ym) {
@@ -89,8 +92,9 @@ export function monthlyBudgetReport(expenses, ym, budget) {
           .reduce((sum, e) => sum + (e.amount || 0), 0),
       ),
     })),
-    fixedTotal: inMonth(expenses, ym)
-      .filter((e) => isFixedCost(e.categoryId))
+    // 한도에서 빠진 금액(고정비 + 용돈) — 설정 화면에서 얼마가 빠졌는지 보여준다.
+    excludedTotal: inMonth(expenses, ym)
+      .filter((e) => isOffBudget(e.categoryId))
       .reduce((sum, e) => sum + (e.amount || 0), 0),
   }
 }

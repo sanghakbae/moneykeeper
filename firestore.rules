@@ -39,6 +39,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // settings/categories — 카테고리 목록. 편집은 관리자만.
+    match /settings/{docId} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
     match /members/{uid} {
       allow read: if isMember();
       allow write: if isMember() && request.auth.uid == uid;

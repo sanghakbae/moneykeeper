@@ -165,4 +165,30 @@ export async function saveBudget(month, data, user) {
   )
 }
 
+/* ---------------------------------- 카테고리 ---------------------------------- */
+
+// settings/categories 한 문서에 배열로 담는다. 목록이 작아 통째로 읽고 쓰는 편이 단순하다.
+
+export function subscribeCategories(callback, onError) {
+  if (!isFirebaseConfigured) {
+    onError?.(new Error('Firebase 설정이 없습니다.'))
+    return () => {}
+  }
+  return onSnapshot(
+    doc(db, collectionName('settings'), 'categories'),
+    (snap) => callback(snap.exists() ? snap.data().items || [] : null),
+    (error) => onError?.(error),
+  )
+}
+
+export async function saveCategories(items, user) {
+  assertConfigured()
+  await setDoc(doc(db, collectionName('settings'), 'categories'), {
+    items,
+    updatedBy: user?.username || '',
+    updatedMs: Date.now(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export { isFirebaseConfigured }

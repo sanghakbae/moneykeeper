@@ -837,6 +837,12 @@ button {
   font-weight: 650;
 }
 
+.chart text.bar-value {
+  fill: var(--ink);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
 .chart-readout {
   display: flex;
   align-items: baseline;
@@ -1127,4 +1133,68 @@ table.data th {
   font-size: 12px;
   color: var(--series-1);
   font-weight: 600;
+}
+
+/* --------------------------- 카테고리 편집 (관리자) --------------------------- */
+
+.cat-edit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.cat-edit input {
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid var(--baseline);
+  background: var(--surface-1);
+  font-size: 14px;
+  padding: 0 8px;
+}
+
+.cat-edit-emoji {
+  width: 42px;
+  text-align: center;
+  flex: none;
+}
+
+.cat-edit-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.cat-edit-flag {
+  flex: none;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 1px solid var(--baseline);
+  background: var(--surface-1);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.cat-edit-flag[aria-pressed='true'] {
+  border-color: var(--series-1);
+  background: var(--series-1-100);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.cat-edit-move,
+.cat-edit-del {
+  flex: none;
+  width: 28px;
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.cat-edit-del {
+  color: var(--critical);
 }

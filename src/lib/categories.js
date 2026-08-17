@@ -1,10 +1,13 @@
-// 가계부 카테고리 정의.
+// 가계부 카테고리.
 //
-// fixed: true 인 카테고리는 "고정비" — 매월 나가는 금액이 정해져 있어 생활비 한도
-// 계산에서 제외한다(보험료·전기세·가스비·관리비 등). 사용자 요청 사항이다.
+// 기본 목록은 코드에 두고, 관리자가 설정에서 고치면 Firestore(settings/categories)의
+// 목록이 기준이 된다. 앱이 뜰 때 setCategories() 로 갈아끼운다.
+//
+// fixed  : 고정비 — 매월 정해진 금액이 나가므로 생활비 한도에서 뺀다(보험료·전기세 등).
+// offBudget : 고정비는 아니지만 한도에서 빼는 것(용돈).
 
-export const CATEGORIES = [
-  // 먹는 것
+export const DEFAULT_CATEGORIES = [
+  // 식생활
   { id: 'food', name: '식비', emoji: '🍚', group: '식생활' },
   { id: 'coffee', name: '커피/음료', emoji: '☕', group: '식생활' },
   { id: 'dining', name: '외식', emoji: '🍽️', group: '식생활' },
@@ -29,16 +32,9 @@ export const CATEGORIES = [
   { id: 'medical', name: '의료/건강', emoji: '💊', group: '생활' },
   { id: 'pet', name: '반려동물', emoji: '🐶', group: '생활' },
 
-  // 여가
-  { id: 'culture', name: '문화/여가', emoji: '🎬', group: '여가' },
-  { id: 'hobby', name: '취미', emoji: '🎮', group: '여가' },
-  { id: 'travel', name: '여행', emoji: '✈️', group: '여가' },
-  { id: 'sports', name: '운동', emoji: '🏋️', group: '여가' },
-
   // 가족
   { id: 'education', name: '교육', emoji: '📚', group: '가족' },
   { id: 'kids', name: '육아', emoji: '🧸', group: '가족' },
-  { id: 'allowance', name: '용돈', emoji: '🧧', group: '가족' },
   { id: 'event', name: '경조사', emoji: '🎁', group: '가족' },
   { id: 'gift', name: '선물', emoji: '💝', group: '가족' },
 
@@ -53,23 +49,75 @@ export const CATEGORIES = [
   { id: 'loan', name: '대출/이자', emoji: '🏦', group: '고정비', fixed: true },
   { id: 'tax', name: '세금', emoji: '🧾', group: '고정비', fixed: true },
   { id: 'saving', name: '저축/투자', emoji: '💰', group: '고정비', fixed: true },
-
-  { id: 'etc', name: '기타', emoji: '📦', group: '기타' },
 ]
 
-export const CATEGORY_GROUPS = ['식생활', '이동', '생활', '여가', '가족', '고정비', '기타']
+const index = (list) => new Map(list.map((c) => [c.id, c]))
 
-const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]))
+let active = DEFAULT_CATEGORIES
+let byId = index(active)
+
+/** Firestore 에서 읽어온 목록으로 갈아끼운다. 비어 있으면 기본값을 지킨다. */
+export function setCategories(list) {
+  if (!Array.isArray(list) || list.length === 0) return
+  active = list
+  byId = index(list)
+}
+
+export function getCategories() {
+  return active
+}
+
+export function categoryGroups(list = active) {
+  const groups = []
+  for (const c of list) if (!groups.includes(c.group)) groups.push(c.group)
+  return groups
+}
 
 export function getCategory(id) {
-  return BY_ID.get(id) || { id, name: id || '미분류', emoji: '❓', group: '기타' }
+  return byId.get(id) || { id, name: '미분류', emoji: '❓', group: '' }
 }
 
 export function isFixedCost(id) {
-  return Boolean(BY_ID.get(id)?.fixed)
+  return Boolean(byId.get(id)?.fixed)
+}
+
+/** 생활비 한도에서 빼는 카테고리 — 고정비와 용돈. */
+export function isOffBudget(id) {
+  const category = byId.get(id)
+  return Boolean(category?.fixed || category?.offBudget)
+}
+
+/** 한도에서 빠지는 이유를 화면에 붙일 짧은 꼬리표. 해당 없으면 빈 문자열. */
+export function offBudgetTag(id) {
+  const category = byId.get(id)
+  if (category?.fixed) return '고정비'
+  if (category?.offBudget) return '한도 제외'
+  return ''
 }
 
 /** 생활비(변동비)에 해당하는 지출인지 — 한도 계산의 기준. */
 export function countsTowardBudget(expense) {
-  return !isFixedCost(expense.categoryId)
+  return !isOffBudget(expense.categoryId)
+}
+
+/** 새 카테고리 id — 기존 기록의 id 와 겹치지 않도록 시간 기반으로 만든다. */
+export function newCategoryId() {
+  return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
+}
+
+/** 저장 전에 모양을 다듬는다(빈 이름 제거, 필요한 필드만 남김). */
+export function normalizeCategories(list) {
+  return list
+    .filter((c) => c.name && c.name.trim())
+    .map((c) => {
+      const item = {
+        id: c.id,
+        name: c.name.trim(),
+        emoji: (c.emoji || '📦').trim(),
+        group: (c.group || '생활').trim(),
+      }
+      if (c.fixed) item.fixed = true
+      if (c.offBudget) item.offBudget = true
+      return item
+    })
 }

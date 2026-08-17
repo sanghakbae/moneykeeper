@@ -8,7 +8,7 @@ import { addExpense } from '../lib/store.js'
 import { formatNumber, formatWon, todayISO } from '../lib/format.js'
 import { budgetAlerts, monthlyBudgetReport } from '../lib/stats.js'
 import { displayName } from '../lib/accounts.js'
-import { isFixedCost } from '../lib/categories.js'
+import { isOffBudget, offBudgetTag } from '../lib/categories.js'
 
 export default function Add() {
   const { user, expenses, budgets, notify, today } = useApp()
@@ -30,11 +30,6 @@ export default function Add() {
   const meter = myAllowance
     ? { label: `${user.name} 용돈`, status: myAllowance }
     : { label: '이번 달 생활비', status: report.household }
-
-  const recentIds = useMemo(
-    () => expenses.filter((e) => e.username === user.username).map((e) => e.categoryId),
-    [expenses, user.username],
-  )
 
   const todayTotal = expenses
     .filter((e) => e.date === date)
@@ -80,10 +75,10 @@ export default function Add() {
         </span>
       </div>
 
-      <CategoryPicker value={categoryId} onChange={setCategoryId} recentIds={recentIds} />
+      <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
-      {categoryId && isFixedCost(categoryId) && (
-        <p className="hint">고정비라 생활비 한도 계산에는 포함되지 않습니다.</p>
+      {categoryId && isOffBudget(categoryId) && (
+        <p className="hint">{offBudgetTag(categoryId)}라 생활비 한도에는 포함되지 않습니다.</p>
       )}
 
       <div className="card" style={{ display: 'flex', gap: 8 }}>

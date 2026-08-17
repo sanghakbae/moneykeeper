@@ -5,9 +5,11 @@ import {
   signIn,
   signOutUser,
   subscribeBudgets,
+  subscribeCategories,
   subscribeExpenses,
 } from '../lib/store.js'
 import { todayISO } from '../lib/format.js'
+import { DEFAULT_CATEGORIES, setCategories } from '../lib/categories.js'
 
 const Ctx = createContext(null)
 
@@ -16,6 +18,7 @@ export function AppProvider({ children }) {
   const [authReady, setAuthReady] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [budgets, setBudgets] = useState({})
+  const [categories, setCategoryList] = useState(DEFAULT_CATEGORIES)
   const [dataError, setDataError] = useState('')
   const [toast, setToast] = useState('')
 
@@ -34,9 +37,16 @@ export function AppProvider({ children }) {
     setDataError('')
     const unsubExpenses = subscribeExpenses(setExpenses, (e) => setDataError(readError(e)))
     const unsubBudgets = subscribeBudgets(setBudgets, (e) => setDataError(readError(e)))
+    const unsubCategories = subscribeCategories((items) => {
+      // 저장된 목록이 없으면 코드의 기본값을 그대로 쓴다.
+      const next = items && items.length ? items : DEFAULT_CATEGORIES
+      setCategories(next) // 모듈 레지스트리 먼저 — getCategory() 가 바로 새 목록을 본다
+      setCategoryList(next)
+    }, (e) => setDataError(readError(e)))
     return () => {
       unsubExpenses()
       unsubBudgets()
+      unsubCategories()
     }
   }, [user])
 
@@ -52,6 +62,7 @@ export function AppProvider({ children }) {
       authReady,
       expenses,
       budgets,
+      categories,
       dataError,
       toast,
       notify: setToast,
@@ -60,7 +71,7 @@ export function AppProvider({ children }) {
       login: signIn,
       logout: signOutUser,
     }),
-    [user, authReady, expenses, budgets, dataError, toast],
+    [user, authReady, expenses, budgets, categories, dataError, toast],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

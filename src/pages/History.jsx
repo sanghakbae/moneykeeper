@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
-import { getCategory } from '../lib/categories.js'
+import { getCategory, offBudgetTag } from '../lib/categories.js'
 import { formatDateLabel, formatWon } from '../lib/format.js'
 import { monthTitle, shiftMonth } from '../lib/periods.js'
 import { removeExpense, updateExpense } from '../lib/store.js'
@@ -101,7 +101,7 @@ export default function History() {
                     <span className="meta">
                       {displayName(expense.username)}
                       {expense.memo ? ` · ${expense.memo}` : ''}
-                      {category.fixed ? ' · 고정비' : ''}
+                      {offBudgetTag(expense.categoryId) ? ` · ${offBudgetTag(expense.categoryId)}` : ''}
                     </span>
                   </span>
                   <span className="amount">{formatWon(expense.amount)}</span>
@@ -130,8 +130,6 @@ function EditSheet({ expense, expenses, onClose, notify }) {
   const [memo, setMemo] = useState(expense.memo || '')
   const [date, setDate] = useState(expense.date)
   const [busy, setBusy] = useState(false)
-
-  const recentIds = useMemo(() => expenses.map((e) => e.categoryId), [expenses])
 
   const save = async () => {
     setBusy(true)
@@ -200,7 +198,7 @@ function EditSheet({ expense, expenses, onClose, notify }) {
           />
         </div>
 
-        <CategoryPicker value={categoryId} onChange={setCategoryId} recentIds={recentIds} />
+        <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
         <button className="btn" type="button" onClick={save} disabled={busy}>
           저장

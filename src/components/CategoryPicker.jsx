@@ -1,33 +1,15 @@
-import { useMemo, useState } from 'react'
-import { CATEGORIES, CATEGORY_GROUPS, getCategory } from '../lib/categories.js'
+import { useState } from 'react'
+import { categoryGroups, getCategory, offBudgetTag } from '../lib/categories.js'
+import { useApp } from '../context/AppContext.jsx'
 
-/**
- * 카테고리 선택. 첫 화면은 "자주 쓰는" — 내 지출 기록에서 많이 쓴 순서라
- * 대부분 한 번의 탭으로 끝난다. 나머지는 그룹 탭으로 넘어간다.
- */
-export default function CategoryPicker({ value, onChange, recentIds }) {
-  const [group, setGroup] = useState('자주 쓰는')
+/** 카테고리 선택 — 그룹 탭으로 나눠 한 화면에 담는다. */
+export default function CategoryPicker({ value, onChange }) {
+  const { categories } = useApp()
+  const groups = categoryGroups(categories)
+  const [group, setGroup] = useState(() => getCategory(value).group || groups[0])
 
-  const frequent = useMemo(() => {
-    const seen = new Set()
-    const list = []
-    for (const id of recentIds) {
-      if (seen.has(id)) continue
-      seen.add(id)
-      list.push(getCategory(id))
-      if (list.length >= 8) break
-    }
-    for (const c of CATEGORIES) {
-      if (list.length >= 8) break
-      if (!seen.has(c.id) && !c.fixed) {
-        seen.add(c.id)
-        list.push(c)
-      }
-    }
-    return list
-  }, [recentIds])
-
-  const shown = group === '자주 쓰는' ? frequent : CATEGORIES.filter((c) => c.group === group)
+  const activeGroup = groups.includes(group) ? group : groups[0]
+  const shown = categories.filter((c) => c.group === activeGroup)
 
   return (
     <div className="card">
@@ -36,17 +18,17 @@ export default function CategoryPicker({ value, onChange, recentIds }) {
         {value && (
           <span className="hint">
             {getCategory(value).emoji} {getCategory(value).name}
-            {getCategory(value).fixed ? ' · 고정비' : ''}
+            {offBudgetTag(value) ? ` · ${offBudgetTag(value)}` : ''}
           </span>
         )}
       </div>
 
       <div className="cat-groups" style={{ marginBottom: 10 }}>
-        {['자주 쓰는', ...CATEGORY_GROUPS].map((g) => (
+        {groups.map((g) => (
           <button
             key={g}
             type="button"
-            aria-pressed={group === g}
+            aria-pressed={activeGroup === g}
             onClick={() => setGroup(g)}
           >
             {g}
@@ -64,7 +46,7 @@ export default function CategoryPicker({ value, onChange, recentIds }) {
           >
             <span className="emoji" aria-hidden="true">{c.emoji}</span>
             <span className="name">{c.name}</span>
-            {c.fixed && <span className="fixed-tag">고정비</span>}
+            {offBudgetTag(c.id) && <span className="fixed-tag">{offBudgetTag(c.id)}</span>}
           </button>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildBuckets } from '../src/lib/periods.js'
+import { DEFAULT_CATEGORIES, setCategories } from '../src/lib/categories.js'
 import {
   budgetAlerts,
   budgetStatus,
@@ -51,6 +52,28 @@ test('고정비는 생활비에서 빠진다', () => {
   assert.deepEqual(rows.map((r) => r.categoryId), ['food'])
 })
 
+test("관리자가 '한도 제외'로 표시한 카테고리도 생활비에서 빠진다", () => {
+  setCategories([
+    { id: 'food', name: '식비', emoji: '🍚', group: '식생활' },
+    { id: 'pocket', name: '용돈', emoji: '🧧', group: '가족', offBudget: true },
+  ])
+  try {
+    const report = monthlyBudgetReport(
+      [
+        expense('shbae', 'pocket', 300000, '2026-08-01'),
+        expense('shbae', 'food', 100000, '2026-08-02'),
+      ],
+      '2026-08',
+      { limit: 500000, allowances: {} },
+    )
+    assert.equal(report.household.spent, 100000)
+    assert.equal(report.household.level, 'ok')
+    assert.equal(report.excludedTotal, 300000)
+  } finally {
+    setCategories(DEFAULT_CATEGORIES)
+  }
+})
+
 test('budgetStatus 는 30% 남았을 때부터 경고한다', () => {
   assert.equal(budgetStatus(0, 100).level, 'none')
   assert.equal(budgetStatus(1000, 690).level, 'ok')
@@ -75,7 +98,7 @@ test('용돈이 있는 사람의 지출은 가족 생활비 한도에서 빠진�
 
   assert.equal(report.household.spent, 400000)
   assert.equal(report.household.level, 'warn') // 80% 사용
-  assert.equal(report.fixedTotal, 200000)
+  assert.equal(report.excludedTotal, 200000)
 
   assert.equal(report.allowances.length, 1)
   assert.equal(report.allowances[0].username, 'hgbae')

@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { compactWon, formatWon } from '../lib/format.js'
 
 const W = 340
-const H = 190
-const PAD = { top: 14, right: 6, bottom: 22, left: 34 }
+const H = 196
+const PAD = { top: 22, right: 8, bottom: 24, left: 36 }
+const MIN_LABEL_GAP = 30 // 뷰박스 단위 — 이보다 가까운 x축 라벨은 겹치므로 버린다
 
 /** 윗변만 둥근 막대 — 바닥(축)에는 붙는다. */
 function barPath(x, y, w, h, r = 4) {
@@ -21,11 +22,30 @@ function barPath(x, y, w, h, r = 4) {
 }
 
 function niceMax(value) {
-  if (value <= 0) return 1
+  if (value <= 0) return 10000
   const magnitude = 10 ** Math.floor(Math.log10(value))
   const scaled = value / magnitude
   const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10
   return step * magnitude
+}
+
+/** 겹치지 않는 x축 라벨만 고른다. 선택한 막대는 무조건 살린다. */
+function pickLabels(count, selectedIndex, xOf) {
+  const stride = Math.max(1, Math.ceil(count / 6))
+  const candidates = [
+    selectedIndex,
+    count - 1,
+    0,
+    ...Array.from({ length: count }, (_, i) => i).filter((i) => i % stride === 0),
+  ]
+  const kept = []
+  for (const i of candidates) {
+    if (i < 0 || i >= count) continue
+    if (kept.includes(i)) continue
+    if (kept.some((k) => Math.abs(xOf(k) - xOf(i)) < MIN_LABEL_GAP)) continue
+    kept.push(i)
+  }
+  return new Set(kept)
 }
 
 /**
@@ -41,14 +61,31 @@ export default function TrendChart({ data, unitLabel }) {
 
   if (!data.length) return null
 
-  const active = data[Math.min(selected, data.length - 1)] || data[data.length - 1]
-  const max = niceMax(Math.max(...data.map((d) => d.total), 0))
+  const index = Math.min(selected, data.length - 1)
+  const active = data[index]
+  const grandTotal = data.reduce((sum, d) => sum + d.total, 0)
+
+  if (grandTotal === 0) {
+    return (
+      <p className="empty-state">
+        아직 이 기간에 기록된 지출이 없습니다.
+        <br />
+        <span className="hint">지출을 입력하면 여기에 추이가 그려집니다.</span>
+      </p>
+    )
+  }
+
+  const max = niceMax(Math.max(...data.map((d) => d.total)))
   const plotW = W - PAD.left - PAD.right
   const plotH = H - PAD.top - PAD.bottom
   const band = plotW / data.length
-  const barW = Math.min(24, Math.max(6, band - 6))
+  const barW = Math.min(22, Math.max(5, band - 6))
   const y = (v) => PAD.top + plotH - (v / max) * plotH
-  const tickEvery = Math.ceil(data.length / 7)
+  const centerOf = (i) => PAD.left + band * i + band / 2
+  const labelled = pickLabels(data.length, index, centerOf)
+
+  const activeX = centerOf(index)
+  const activeY = y(active.total)
 
   return (
     <div>
@@ -71,16 +108,15 @@ export default function TrendChart({ data, unitLabel }) {
               y1={y(max * f)}
               y2={y(max * f)}
             />
-            <text x={PAD.left - 5} y={y(max * f) + 3.5} textAnchor="end">
+            <text x={PAD.left - 6} y={y(max * f) + 3.5} textAnchor="end">
               {f === 0 ? '0' : compactWon(max * f)}
             </text>
           </g>
         ))}
 
         {data.map((d, i) => {
-          const cx = PAD.left + band * i + band / 2
+          const isOn = i === index
           const h = PAD.top + plotH - y(d.total)
-          const isOn = d.key === active.key
           return (
             <g key={d.key} onClick={() => setSelected(i)} style={{ cursor: 'pointer' }}>
               <rect
@@ -92,13 +128,13 @@ export default function TrendChart({ data, unitLabel }) {
               />
               <path
                 className={isOn ? 'bar' : 'bar dim'}
-                d={barPath(cx - barW / 2, y(d.total), barW, h)}
+                d={barPath(centerOf(i) - barW / 2, y(d.total), barW, h)}
               />
-              {(i % tickEvery === 0 || i === data.length - 1 || isOn) && (
+              {labelled.has(i) && (
                 <text
                   className={isOn ? 'tick-x on' : 'tick-x'}
-                  x={cx}
-                  y={H - 7}
+                  x={centerOf(i)}
+                  y={H - 8}
                   textAnchor="middle"
                 >
                   {d.label}
@@ -107,6 +143,12 @@ export default function TrendChart({ data, unitLabel }) {
             </g>
           )
         })}
+
+        {active.total > 0 && (
+          <text className="bar-value" x={activeX} y={activeY - 7} textAnchor="middle">
+            {compactWon(active.total)}
+          </text>
+        )}
 
         <line className="axis" x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} />
       </svg>
