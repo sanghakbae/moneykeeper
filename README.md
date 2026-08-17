@@ -23,6 +23,12 @@
 SEED_PASSWORD='...' npm run seed
 ```
 
+비밀번호 변경 (계정마다 다를 수 있다):
+
+```bash
+MK_USERNAME=shbae OLD_PASSWORD='...' NEW_PASSWORD='...' npm run set-password
+```
+
 ## 개발
 
 ```bash
@@ -36,11 +42,13 @@ npm run build
 
 ## 데이터 모델
 
-- `expenses/{id}` — `{ uid, username, amount, categoryId, memo, date:'YYYY-MM-DD', createdMs, createdAt }`
+- `expenses/{id}` — `{ uid, username, amount, categoryId, memo, date:'YYYY-MM-DD', reaction, createdMs, createdAt }`
+  - `memo` 는 필수 입력이다. `reaction` 은 `'like' | 'dislike' | null` 로, 잘 쓴 돈/아까운 돈 표시다.
 - `budgets/{YYYY-MM}` — `{ limit, allowances: { username: number }, updatedBy, updatedAt }`
 
 보안 규칙(`firestore.rules`)은 등록된 세 계정만 읽고 쓰게 하고, 수정·삭제는 본인 기록만
-(관리자는 전체) 허용한다. 한도 설정은 관리자만 쓸 수 있다.
+(관리자는 전체) 허용한다. 예외로 `reaction` 필드만 바꾸는 수정은 가족 누구나 할 수 있다.
+한도 설정과 카테고리 편집은 관리자만 쓸 수 있다.
 
 ## 한도 계산 규칙
 

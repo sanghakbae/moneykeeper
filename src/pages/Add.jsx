@@ -31,14 +31,21 @@ export default function Add() {
     ? { label: `${user.name} 용돈`, status: myAllowance }
     : { label: '이번 달 생활비', status: report.household }
 
+  // 금액·카테고리·메모는 모두 필수다. 하나라도 비면 저장 버튼을 막고 무엇이 빠졌는지 알려준다.
+  const missing = []
+  if (!Number(amount)) missing.push('금액')
+  if (!categoryId) missing.push('카테고리')
+  if (!memo.trim()) missing.push('메모')
+
   const save = async () => {
     const value = Number(amount)
     if (!value || value <= 0) return setError('금액을 입력해주세요.')
     if (!categoryId) return setError('카테고리를 골라주세요.')
+    if (!memo.trim()) return setError('메모를 입력해주세요.')
     setError('')
     setBusy(true)
     try {
-      await addExpense(user, { amount: value, categoryId, memo, date })
+      await addExpense(user, { amount: value, categoryId, memo: memo.trim(), date })
       notify(`${formatWon(value)} 저장했어요`)
       setAmount('')
       setMemo('')
@@ -78,14 +85,16 @@ export default function Add() {
           aria-label="날짜"
         />
         <input
-          className="limit-input"
+          className={memo.trim() ? 'limit-input' : 'limit-input needs-input'}
           style={{ flex: 1.2, textAlign: 'left', fontWeight: 400 }}
           type="text"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          placeholder="메모 (선택)"
+          placeholder="메모 (필수)"
           maxLength={40}
-          aria-label="메모"
+          required
+          aria-required="true"
+          aria-label="메모 (필수)"
         />
       </div>
 
@@ -106,9 +115,20 @@ export default function Add() {
         </p>
       )}
 
-      <button className="btn" type="button" onClick={save} disabled={busy}>
+      <button
+        className="btn"
+        type="button"
+        onClick={save}
+        disabled={busy || missing.length > 0}
+      >
         {busy ? '저장 중…' : '저장'}
       </button>
+
+      {!busy && missing.length > 0 && (
+        <p className="hint" style={{ textAlign: 'center' }}>
+          {missing.join(' · ')}을(를) 입력하면 저장할 수 있어요
+        </p>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { getCategory, offBudgetTag } from '../lib/categories.js'
 import { formatDateLabel, formatWon } from '../lib/format.js'
 import { monthTitle, shiftMonth } from '../lib/periods.js'
-import { removeExpense, updateExpense } from '../lib/store.js'
+import { removeExpense, setReaction, updateExpense } from '../lib/store.js'
 import { displayName } from '../lib/accounts.js'
 import CategoryPicker from '../components/CategoryPicker.jsx'
 
@@ -88,24 +88,32 @@ export default function History() {
               const category = getCategory(expense.categoryId)
               const mine = expense.username === user.username
               return (
-                <button
-                  type="button"
-                  className="row"
-                  key={expense.id}
-                  onClick={() =>
-                    (mine || user.isAdmin) ? setEditing(expense) : notify('내가 쓴 기록만 고칠 수 있어요')}
-                >
-                  <span className="emoji" aria-hidden="true">{category.emoji}</span>
-                  <span className="body">
-                    <span className="title">{category.name}</span>
-                    <span className="meta">
-                      {displayName(expense.username)}
-                      {expense.memo ? ` · ${expense.memo}` : ''}
-                      {offBudgetTag(expense.categoryId) ? ` · ${offBudgetTag(expense.categoryId)}` : ''}
+                <div className="row" key={expense.id}>
+                  <button
+                    type="button"
+                    className="row-main"
+                    onClick={() =>
+                      (mine || user.isAdmin)
+                        ? setEditing(expense)
+                        : notify('내가 쓴 기록만 고칠 수 있어요')}
+                  >
+                    <span className="emoji" aria-hidden="true">{category.emoji}</span>
+                    <span className="body">
+                      <span className="title">{category.name}</span>
+                      <span className="meta">
+                        {displayName(expense.username)}
+                        {expense.memo ? ` · ${expense.memo}` : ''}
+                        {offBudgetTag(expense.categoryId)
+                          ? ` · ${offBudgetTag(expense.categoryId)}`
+                          : ''}
+                      </span>
                     </span>
+                  </button>
+                  <span className="right">
+                    <span className="amount">{formatWon(expense.amount)}</span>
+                    <Reactions expense={expense} notify={notify} />
                   </span>
-                  <span className="amount">{formatWon(expense.amount)}</span>
-                </button>
+                </div>
               )
             })}
           </div>
@@ -113,31 +121,70 @@ export default function History() {
       ))}
 
       {editing && (
-        <EditSheet
-          expense={editing}
-          expenses={expenses}
-          onClose={() => setEditing(null)}
-          notify={notify}
-        />
+        <EditSheet expense={editing} onClose={() => setEditing(null)} notify={notify} />
       )}
     </div>
   )
 }
 
-function EditSheet({ expense, expenses, onClose, notify }) {
+/** 잘 쓴 돈 / 아까운 돈 표시. 같은 걸 다시 누르면 해제된다. */
+function Reactions({ expense, notify }) {
+  const [busy, setBusy] = useState(false)
+
+  const toggle = async (value) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await setReaction(expense.id, expense.reaction === value ? null : value)
+      if (navigator.vibrate) navigator.vibrate(8)
+    } catch (e) {
+      notify(e?.message || '표시하지 못했습니다')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className="reactions">
+      <button
+        type="button"
+        aria-pressed={expense.reaction === 'like'}
+        aria-label="잘 쓴 돈"
+        title="잘 쓴 돈"
+        onClick={() => toggle('like')}
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        aria-pressed={expense.reaction === 'dislike'}
+        aria-label="아까운 돈"
+        title="아까운 돈"
+        onClick={() => toggle('dislike')}
+      >
+        👎
+      </button>
+    </span>
+  )
+}
+
+function EditSheet({ expense, onClose, notify }) {
   const [amount, setAmount] = useState(String(expense.amount || ''))
   const [categoryId, setCategoryId] = useState(expense.categoryId)
   const [memo, setMemo] = useState(expense.memo || '')
   const [date, setDate] = useState(expense.date)
   const [busy, setBusy] = useState(false)
 
+  const invalid = !Number(amount) || !categoryId || !memo.trim()
+
   const save = async () => {
+    if (invalid) return notify('금액·카테고리·메모를 모두 채워주세요')
     setBusy(true)
     try {
       await updateExpense(expense.id, {
         amount: Number(amount) || 0,
         categoryId,
-        memo,
+        memo: memo.trim(),
         date,
       })
       notify('수정했어요')
@@ -188,19 +235,22 @@ function EditSheet({ expense, expenses, onClose, notify }) {
             aria-label="날짜"
           />
           <input
-            className="limit-input"
+            className={memo.trim() ? 'limit-input' : 'limit-input needs-input'}
             style={{ flex: 1.2, textAlign: 'left', fontWeight: 400 }}
             type="text"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            placeholder="메모"
-            aria-label="메모"
+            placeholder="메모 (필수)"
+            maxLength={40}
+            required
+            aria-required="true"
+            aria-label="메모 (필수)"
           />
         </div>
 
         <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
-        <button className="btn" type="button" onClick={save} disabled={busy}>
+        <button className="btn" type="button" onClick={save} disabled={busy || invalid}>
           저장
         </button>
         <button className="btn ghost" type="button" onClick={onClose} disabled={busy}>

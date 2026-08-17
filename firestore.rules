@@ -29,7 +29,13 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
-      allow update, delete: if isMember()
+      // 본인 기록(관리자는 전체)만 고치거나 지울 수 있다.
+      // 다만 '좋아요/싫어요' 표시는 가족 누구나 남길 수 있게 그 필드만 예외로 둔다.
+      allow update: if isMember()
+        && (resource.data.uid == request.auth.uid
+            || isAdmin()
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reaction']));
+      allow delete: if isMember()
         && (resource.data.uid == request.auth.uid || isAdmin());
     }
 

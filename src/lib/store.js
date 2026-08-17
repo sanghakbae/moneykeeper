@@ -125,6 +125,12 @@ export async function updateExpense(id, patch) {
   await updateDoc(doc(db, collectionName('expenses'), id), patch)
 }
 
+/** 잘 쓴 돈 / 아까운 돈 표시. 가족 누구나 누를 수 있다(규칙에서 이 필드만 허용). */
+export async function setReaction(id, reaction) {
+  assertConfigured()
+  await updateDoc(doc(db, collectionName('expenses'), id), { reaction })
+}
+
 export async function removeExpense(id) {
   assertConfigured()
   await deleteDoc(doc(db, collectionName('expenses'), id))
