@@ -1052,11 +1052,12 @@ button {
   gap: 8px;
 }
 
-.limit-input input {
+.limit-input input,
+input.limit-input {
   flex: 1;
-  height: 38px;
-  font-size: 15px;
-  padding: 0 10px;
+  height: 34px;
+  font-size: 13px;
+  padding: 0 9px;
   border-radius: 5px;
   border: 1px solid var(--baseline);
   background: var(--surface-1);
