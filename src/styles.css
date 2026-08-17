@@ -992,6 +992,7 @@ button {
 
 .stat .value {
   font-size: 17px;
+  white-space: nowrap;
   font-weight: 700;
   letter-spacing: -0.02em;
 }

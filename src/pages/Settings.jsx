@@ -64,8 +64,9 @@ export default function Settings() {
         </div>
 
         <p className="hint" style={{ marginTop: 12 }}>
-          이번 달 고정비·용돈 {formatWon(report.excludedTotal)}는 한도 계산에서 빠집니다
-          (보험료·전기세·가스비·관리비 등 고정비와 용돈). 한도의 30% 이하가 남으면 경고가 표시됩니다.
+          이번 달 고정비 {formatWon(report.excludedTotal)}은 한도 계산에서 빠집니다
+          (관리비·전기세·가스비·보험료 등 &apos;한도 제외&apos;로 표시된 카테고리).
+          한도의 30% 이하가 남으면 경고가 표시됩니다.
         </p>
 
         {user.isAdmin && (

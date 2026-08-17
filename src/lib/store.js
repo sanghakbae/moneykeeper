@@ -152,17 +152,15 @@ export function subscribeBudgets(callback, onError) {
 
 export async function saveBudget(month, data, user) {
   assertConfigured()
-  await setDoc(
-    doc(db, collectionName('budgets'), month),
-    {
-      limit: Number(data.limit) || 0,
-      allowances: data.allowances || {},
-      updatedBy: user?.username || '',
-      updatedMs: Date.now(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  )
+  // merge 를 쓰면 안 된다 — 중첩 맵은 키 단위로 병합돼서, 지운 용돈이 되살아난다.
+  // 설정 시트가 항상 문서 전체(한도 + 용돈)를 보내므로 통째로 덮어쓴다.
+  await setDoc(doc(db, collectionName('budgets'), month), {
+    limit: Number(data.limit) || 0,
+    allowances: data.allowances || {},
+    updatedBy: user?.username || '',
+    updatedMs: Date.now(),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 /* ---------------------------------- 카테고리 ---------------------------------- */

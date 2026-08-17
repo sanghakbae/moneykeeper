@@ -4,7 +4,7 @@ import CategoryBars from '../components/CategoryBars.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { GRANULARITIES, bucketKey, buildBuckets, granularity } from '../lib/periods.js'
 import { sumByBucket, totalsByCategory, totalsByUser } from '../lib/stats.js'
-import { formatWon } from '../lib/format.js'
+import { compactWon, formatWon } from '../lib/format.js'
 import { displayName } from '../lib/accounts.js'
 import { getCategory } from '../lib/categories.js'
 
@@ -109,18 +109,21 @@ export default function Stats() {
         </p>
       </div>
 
+      {/* 타일은 좁아서 전체 자릿수가 줄바꿈된다 — 압축 표기하고 정확한 값은 title 로 둔다 */}
       <div className="stat-row">
         <div className="stat">
           <div className="label">합계</div>
-          <div className="value">{formatWon(sum)}</div>
+          <div className="value" title={formatWon(sum)}>{compactWon(sum)}원</div>
         </div>
         <div className="stat">
           <div className="label">{g.label} 평균</div>
-          <div className="value">{formatWon(average)}</div>
+          <div className="value" title={formatWon(average)}>{compactWon(average)}원</div>
         </div>
         <div className="stat">
           <div className="label">최대</div>
-          <div className="value">{formatWon(peak?.total || 0)}</div>
+          <div className="value" title={formatWon(peak?.total || 0)}>
+            {compactWon(peak?.total || 0)}원
+          </div>
         </div>
       </div>
 

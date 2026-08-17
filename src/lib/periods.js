@@ -64,6 +64,29 @@ export function bucketLabel(key, id) {
   }
 }
 
+/**
+ * 축의 첫 라벨용 — 연도를 함께 적는다.
+ * 짧은 라벨만 쓰면 '4Q, 2Q, 4Q' 처럼 어느 해인지 알 수 없다.
+ */
+export function bucketLabelWithYear(key, id) {
+  switch (id) {
+    case 'month': {
+      const [y, m] = key.split('-')
+      return `${y.slice(2)}년 ${Number(m)}월`
+    }
+    case 'quarter': {
+      const [y, q] = key.split('-')
+      return `${y.slice(2)}년 ${q.replace('Q', '')}Q`
+    }
+    case 'half': {
+      const [y, h] = key.split('-')
+      return `${y.slice(2)}년 ${h === 'H1' ? '상' : '하'}`
+    }
+    default:
+      return bucketLabel(key, id)
+  }
+}
+
 /** 버킷 키 → 화면 상단에 쓰는 긴 라벨 */
 export function bucketTitle(key, id) {
   switch (id) {
@@ -114,7 +137,12 @@ export function buildBuckets(id, count, anchorISO) {
     for (let i = count - 1; i >= 0; i -= 1) keys.push(String(y - i))
   }
 
-  return keys.map((key) => ({ key, label: bucketLabel(key, id), title: bucketTitle(key, id) }))
+  return keys.map((key) => ({
+    key,
+    label: bucketLabel(key, id),
+    labelWithYear: bucketLabelWithYear(key, id),
+    title: bucketTitle(key, id),
+  }))
 }
 
 /** 'YYYY-MM' 을 n 개월 이동 */

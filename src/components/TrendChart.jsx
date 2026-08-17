@@ -83,6 +83,8 @@ export default function TrendChart({ data, unitLabel }) {
   const y = (v) => PAD.top + plotH - (v / max) * plotH
   const centerOf = (i) => PAD.left + band * i + band / 2
   const labelled = pickLabels(data.length, index, centerOf)
+  // 축의 첫 라벨에는 연도를 붙인다 — 그래야 '4Q, 2Q' 가 어느 해인지 알 수 있다.
+  const firstLabelled = Math.min(...labelled)
 
   const activeX = centerOf(index)
   const activeY = y(active.total)
@@ -137,7 +139,7 @@ export default function TrendChart({ data, unitLabel }) {
                   y={H - 8}
                   textAnchor="middle"
                 >
-                  {d.label}
+                  {i === firstLabelled ? d.labelWithYear || d.label : d.label}
                 </text>
               )}
             </g>
