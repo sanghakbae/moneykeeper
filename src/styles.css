@@ -936,6 +936,15 @@ button {
   text-overflow: ellipsis;
 }
 
+.cat-bar .top .n .note {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 0 4px;
+}
+
 .cat-bar .top .v {
   font-variant-numeric: tabular-nums;
   color: var(--ink-2);

@@ -9,6 +9,7 @@ import {
   monthlyBudgetReport,
   sumByBucket,
   totalsByCategory,
+  totalsByGroup,
 } from '../src/lib/stats.js'
 
 const expense = (username, categoryId, amount, date) => ({ username, categoryId, amount, date })
@@ -125,4 +126,22 @@ test('한도를 안 정했으면 경고하지 않는다', () => {
     undefined,
   )
   assert.deepEqual(budgetAlerts(report), [])
+})
+
+test('totalsByGroup 은 하위 카테고리를 그룹으로 묶는다', () => {
+  const rows = totalsByGroup([
+    expense('shbae', 'toss', 11380, '2026-08-17'),
+    expense('shbae', 'coffee', 4800, '2026-08-17'),
+    expense('brpark', 'grocery', 132000, '2026-08-16'),
+    expense('hgbae', 'dining', 68000, '2026-08-15'),
+    expense('shbae', 'rent', 450000, '2026-08-01'),
+  ])
+  assert.deepEqual(rows.map((r) => [r.group, r.total]), [
+    ['고정비', 450000],
+    ['식생활', 216180],
+  ])
+  // 아이콘은 그 그룹에서 가장 많이 쓴 카테고리 것을 쓴다
+  assert.equal(rows[1].topCategoryId, 'grocery')
+  assert.equal(rows[1].categoryCount, 4)
+  assert.equal(Math.round(rows[1].share * 100), 32)
 })

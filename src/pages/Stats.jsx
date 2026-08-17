@@ -3,7 +3,7 @@ import TrendChart from '../components/TrendChart.jsx'
 import CategoryBars from '../components/CategoryBars.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { GRANULARITIES, bucketKey, buildBuckets, granularity } from '../lib/periods.js'
-import { sumByBucket, totalsByCategory, totalsByUser } from '../lib/stats.js'
+import { sumByBucket, totalsByCategory, totalsByGroup, totalsByUser } from '../lib/stats.js'
 import { compactWon, formatWon } from '../lib/format.js'
 import { displayName } from '../lib/accounts.js'
 import { getCategory } from '../lib/categories.js'
@@ -14,6 +14,7 @@ export default function Stats() {
   const [scope, setScope] = useState('all')
   const [categoryId, setCategoryId] = useState('all')
   const [showTable, setShowTable] = useState(false)
+  const [detail, setDetail] = useState(false)
 
   const g = granularity(unit)
   const buckets = useMemo(() => buildBuckets(unit, g.count, today), [unit, g.count, today])
@@ -49,8 +50,28 @@ export default function Stats() {
   const average = nonZero.length ? sum / nonZero.length : 0
   const peak = series.reduce((best, s) => (s.total > (best?.total || 0) ? s : best), null)
 
-  const categoryTotals = useMemo(() => totalsByCategory(inWindow), [inWindow])
   const members = useMemo(() => totalsByUser(inWindow), [inWindow])
+
+  // 기본은 그룹(식생활·이동·…) 단위 — 컬리·쿠팡·토스가 식생활로 묶여 보인다.
+  const breakdown = useMemo(() => {
+    if (detail) {
+      return totalsByCategory(inWindow).map((row) => ({
+        id: row.categoryId,
+        emoji: getCategory(row.categoryId).emoji,
+        name: getCategory(row.categoryId).name,
+        total: row.total,
+        share: row.share,
+      }))
+    }
+    return totalsByGroup(inWindow).map((row) => ({
+      id: row.group,
+      emoji: getCategory(row.topCategoryId).emoji,
+      name: row.group,
+      note: row.categoryCount > 1 ? `${row.categoryCount}개` : '',
+      total: row.total,
+      share: row.share,
+    }))
+  }, [inWindow, detail])
 
   return (
     <div className="screen">
@@ -159,10 +180,13 @@ export default function Stats() {
       {categoryId === 'all' && (
         <div className="card">
           <div className="section-title">
-            <span>카테고리별</span>
-            <span className="hint">{windowTitle}</span>
+            <span>{detail ? '세부 카테고리별' : '카테고리별'}</span>
+            <button type="button" className="link-btn" onClick={() => setDetail((v) => !v)}>
+              {detail ? '묶어서 보기' : '자세히 보기'}
+            </button>
           </div>
-          <CategoryBars rows={categoryTotals} limit={30} />
+          <p className="hint" style={{ marginBottom: 10 }}>{windowTitle}</p>
+          <CategoryBars rows={breakdown} limit={detail ? 30 : 12} />
         </div>
       )}
 

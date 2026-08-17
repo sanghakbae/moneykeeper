@@ -1,7 +1,7 @@
 // 집계·한도 계산. 브라우저 API 를 쓰지 않는 순수 함수라 node --test 로 검증한다.
 
 import { bucketKey } from './periods.js'
-import { isOffBudget } from './categories.js'
+import { getCategory, isOffBudget } from './categories.js'
 
 /** 한도의 30% 가 남았을 때부터 경고 → 사용률 70% 이상이면 warn, 100% 이상이면 over */
 export const WARN_RATIO = 0.7
@@ -25,6 +25,38 @@ export function totalsByCategory(expenses) {
   }
   return [...totals.entries()]
     .map(([categoryId, total]) => ({ categoryId, total, share: sum ? total / sum : 0 }))
+    .sort((a, b) => b.total - a.total)
+}
+
+/**
+ * 그룹(식생활·이동·…) 단위 집계. 컬리·쿠팡·토스처럼 식비 하위로 둔 것들이
+ * 따로 흩어지지 않고 '식생활' 로 묶여 보인다.
+ * 아이콘은 그 그룹에서 가장 많이 쓴 카테고리 것을 쓴다.
+ */
+export function totalsByGroup(expenses) {
+  const groups = new Map()
+  let sum = 0
+  for (const e of expenses) {
+    const category = getCategory(e.categoryId)
+    const key = category.group || '기타'
+    const amount = e.amount || 0
+    const entry = groups.get(key) || { group: key, total: 0, byCategory: new Map() }
+    entry.total += amount
+    entry.byCategory.set(e.categoryId, (entry.byCategory.get(e.categoryId) || 0) + amount)
+    groups.set(key, entry)
+    sum += amount
+  }
+  return [...groups.values()]
+    .map((entry) => {
+      const top = [...entry.byCategory.entries()].sort((a, b) => b[1] - a[1])[0]
+      return {
+        group: entry.group,
+        total: entry.total,
+        share: sum ? entry.total / sum : 0,
+        topCategoryId: top?.[0],
+        categoryCount: entry.byCategory.size,
+      }
+    })
     .sort((a, b) => b.total - a.total)
 }
 

@@ -13,9 +13,6 @@ import { DEFAULT_CATEGORIES, setCategories } from '../lib/categories.js'
 
 const Ctx = createContext(null)
 
-// 개발용 미리보기(로그인 없이 화면만 확인)에서 가짜 값을 넣기 위해 열어둔다.
-export const AppContext = Ctx
-
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null)
   const [authReady, setAuthReady] = useState(false)
