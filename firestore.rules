@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// 가족 가계부 — 로그인한 등록 계정만 접근할 수 있다.
+// 세 계정은 서로의 지출을 함께 보지만(가구 단위 생활비 한도를 쓰므로),
+// 수정·삭제는 본인 것만 가능하다. 관리자(아빠)는 한도 설정과 전체 삭제가 가능하다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function email() {
+      return request.auth != null ? request.auth.token.email : '';
+    }
+
+    // src/lib/accounts.js 의 ACCOUNTS 와 반드시 같게 유지할 것.
+    function isMember() {
+      return request.auth != null && email() in [
+        'brpark@moneykeeper.sanghak.kr',
+        'shbae@moneykeeper.sanghak.kr',
+        'hgbae@moneykeeper.sanghak.kr'
+      ];
+    }
+
+    function isAdmin() {
+      return request.auth != null && email() == 'shbae@moneykeeper.sanghak.kr';
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+      allow update, delete: if isMember()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // budgets/{YYYY-MM} — 월 생활비 한도와 멤버별 용돈. 설정은 관리자만.
+    match /budgets/{month} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
+    match /members/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
