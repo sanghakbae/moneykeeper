@@ -9,17 +9,23 @@ import { displayName } from '../lib/accounts.js'
 import { getCategory } from '../lib/categories.js'
 
 export default function Stats() {
-  const { expenses, today } = useApp()
+  const { expenses, categories: catalog, today } = useApp()
   const [unit, setUnit] = useState('month')
   const [scope, setScope] = useState('all')
+  const [categoryId, setCategoryId] = useState('all')
   const [showTable, setShowTable] = useState(false)
 
   const g = granularity(unit)
   const buckets = useMemo(() => buildBuckets(unit, g.count, today), [unit, g.count, today])
 
   const filtered = useMemo(
-    () => (scope === 'all' ? expenses : expenses.filter((e) => e.username === scope)),
-    [expenses, scope],
+    () =>
+      expenses.filter(
+        (e) =>
+          (scope === 'all' || e.username === scope) &&
+          (categoryId === 'all' || e.categoryId === categoryId),
+      ),
+    [expenses, scope, categoryId],
   )
 
   const series = useMemo(
@@ -27,12 +33,15 @@ export default function Stats() {
     [filtered, unit, buckets],
   )
 
-  // 판독부에서 선택한 구간이 아니라, 가장 최근 구간을 기준으로 아래 상세를 보여준다.
-  const latestKey = buckets[buckets.length - 1]?.key
-  const inLatest = useMemo(
-    () => filtered.filter((e) => bucketKey(e.date, unit) === latestKey),
-    [filtered, unit, latestKey],
+  // 아래 상세는 그래프에 그려진 기간 전체를 기준으로 한다.
+  const keys = useMemo(() => new Set(buckets.map((b) => b.key)), [buckets])
+  const inWindow = useMemo(
+    () => filtered.filter((e) => keys.has(bucketKey(e.date, unit))),
+    [filtered, unit, keys],
   )
+  const windowTitle = buckets.length
+    ? `${buckets[0].title} ~ ${buckets[buckets.length - 1].title}`
+    : ''
 
   const totals = series.map((s) => s.total)
   const sum = totals.reduce((a, b) => a + b, 0)
@@ -40,8 +49,8 @@ export default function Stats() {
   const average = nonZero.length ? sum / nonZero.length : 0
   const peak = series.reduce((best, s) => (s.total > (best?.total || 0) ? s : best), null)
 
-  const categories = useMemo(() => totalsByCategory(inLatest), [inLatest])
-  const members = useMemo(() => totalsByUser(inLatest), [inLatest])
+  const categoryTotals = useMemo(() => totalsByCategory(inWindow), [inWindow])
+  const members = useMemo(() => totalsByUser(inWindow), [inWindow])
 
   return (
     <div className="screen">
@@ -76,9 +85,29 @@ export default function Stats() {
         ))}
       </div>
 
+      {/* 카테고리는 수가 많아 세그먼트로는 안 담긴다 — 선택 목록으로 고른다 */}
+      <div className="cat-filter">
+        <label htmlFor="stat-category">카테고리</label>
+        <select
+          id="stat-category"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+        >
+          <option value="all">전체</option>
+          {catalog.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.emoji} {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="card">
         <div className="section-title">
-          <span>{g.label} 지출 추이</span>
+          <span>
+            {g.label} 지출 추이
+            {categoryId !== 'all' && ` · ${getCategory(categoryId).name}`}
+          </span>
           <button type="button" className="link-btn" onClick={() => setShowTable((v) => !v)}>
             {showTable ? '그래프 보기' : '표로 보기'}
           </button>
@@ -127,17 +156,21 @@ export default function Stats() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="section-title">
-          <span>카테고리별 · {buckets[buckets.length - 1]?.title}</span>
+      {categoryId === 'all' && (
+        <div className="card">
+          <div className="section-title">
+            <span>카테고리별</span>
+            <span className="hint">{windowTitle}</span>
+          </div>
+          <CategoryBars rows={categoryTotals} limit={30} />
         </div>
-        <CategoryBars rows={categories} />
-      </div>
+      )}
 
       {scope === 'all' && members.length > 0 && (
         <div className="card">
           <div className="section-title">
-            <span>사람별 · {buckets[buckets.length - 1]?.title}</span>
+            <span>사람별</span>
+            <span className="hint">{windowTitle}</span>
           </div>
           <table className="data">
             <thead>
@@ -149,7 +182,7 @@ export default function Stats() {
             </thead>
             <tbody>
               {members.map((m) => {
-                const top = totalsByCategory(inLatest.filter((e) => e.username === m.username))[0]
+                const top = totalsByCategory(inWindow.filter((e) => e.username === m.username))[0]
                 return (
                   <tr key={m.username}>
                     <td>{displayName(m.username)}</td>

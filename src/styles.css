@@ -473,7 +473,7 @@ button {
   padding: 8px 12px;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -644,7 +644,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   width: 100%;
   text-align: left;
 }
@@ -668,6 +668,7 @@ button {
 .row .title {
   font-size: 15px;
   font-weight: 550;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -675,6 +676,8 @@ button {
 
 .row .meta {
   font-size: 12px;
+  line-height: 1.35;
+  margin-top: 3px;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1199,4 +1202,39 @@ table.data th {
 
 .cat-edit-del {
   color: var(--critical);
+}
+
+/* --------------------------- 통계 카테고리 필터 --------------------------- */
+
+.cat-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 6px 10px;
+}
+
+.cat-filter label {
+  font-size: 12px;
+  color: var(--muted);
+  flex: none;
+}
+
+.cat-filter select {
+  flex: 1;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  direction: rtl;
+}
+
+.cat-filter select:focus {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+  border-radius: 5px;
 }

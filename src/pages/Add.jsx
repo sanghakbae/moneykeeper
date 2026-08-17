@@ -31,10 +31,6 @@ export default function Add() {
     ? { label: `${user.name} 용돈`, status: myAllowance }
     : { label: '이번 달 생활비', status: report.household }
 
-  const todayTotal = expenses
-    .filter((e) => e.date === date)
-    .reduce((sum, e) => sum + (e.amount || 0), 0)
-
   const save = async () => {
     const value = Number(amount)
     if (!value || value <= 0) return setError('금액을 입력해주세요.')
@@ -65,16 +61,6 @@ export default function Add() {
         />
       </div>
 
-      <div className="amount-display">
-        <span className="hint">
-          {date === (today || todayISO()) ? '오늘' : date} {formatWon(todayTotal)}
-        </span>
-        <span className={amount ? 'value' : 'value empty'}>
-          {amount ? formatNumber(Number(amount)) : '0'}
-          <span className="unit">원</span>
-        </span>
-      </div>
-
       <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
       {categoryId && isOffBudget(categoryId) && (
@@ -101,6 +87,14 @@ export default function Add() {
           maxLength={40}
           aria-label="메모"
         />
+      </div>
+
+      {/* 입력 중인 금액은 키패드 바로 위에 둔다 — 위쪽에 있으면 눈에 안 들어온다 */}
+      <div className="amount-display">
+        <span className={amount ? 'value' : 'value empty'}>
+          {amount ? formatNumber(Number(amount)) : '0'}
+          <span className="unit">원</span>
+        </span>
       </div>
 
       <Keypad value={amount} onChange={setAmount} />
