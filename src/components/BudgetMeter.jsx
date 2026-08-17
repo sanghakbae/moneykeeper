@@ -9,10 +9,8 @@ export default function BudgetMeter({ label, status, hint }) {
       <div className="meter" data-level="none">
         <div className="meter-head">
           <span className="label">{label}</span>
-          <span className="nums">한도 미설정</span>
+          <span className="nums">{hint || '한도 미설정'}</span>
         </div>
-        <div className="meter-track" />
-        {hint && <div className="meter-foot"><span>{hint}</span></div>}
       </div>
     )
   }

@@ -66,18 +66,18 @@ export default function Add() {
       <div className="card">
         <BudgetMeter
           {...meter}
-          hint={user.isAdmin ? '설정 탭에서 한도를 정할 수 있어요.' : '아빠가 한도를 정하면 표시돼요.'}
+          hint={user.isAdmin ? '설정 탭에서 정하기' : '한도 미설정'}
         />
       </div>
 
       <div className="amount-display">
-        <div className="hint" style={{ textAlign: 'left' }}>
-          {date === (today || todayISO()) ? '오늘' : date} 지출 {formatWon(todayTotal)}
-        </div>
-        <div className={amount ? 'value' : 'value empty'}>
+        <span className="hint">
+          {date === (today || todayISO()) ? '오늘' : date} {formatWon(todayTotal)}
+        </span>
+        <span className={amount ? 'value' : 'value empty'}>
           {amount ? formatNumber(Number(amount)) : '0'}
           <span className="unit">원</span>
-        </div>
+        </span>
       </div>
 
       <CategoryPicker value={categoryId} onChange={setCategoryId} recentIds={recentIds} />
