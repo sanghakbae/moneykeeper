@@ -38,6 +38,9 @@ npm test        # 기간 버킷·집계·한도 계산 검증
 npm run build
 ```
 
+로그인 없이 화면만 확인하려면 `http://localhost:5180/preview.html` — 가짜 데이터로 네 화면을
+그대로 띄운다. 엔트리가 `index.html` 하나라 배포 빌드에는 들어가지 않는다.
+
 `.env` 에 `VITE_FIREBASE_*` 가 있어야 동작한다 (`.env.example` 참고).
 
 ## 데이터 모델

@@ -5,7 +5,7 @@ import AlertBanner from '../components/AlertBanner.jsx'
 import BudgetMeter from '../components/BudgetMeter.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { addExpense } from '../lib/store.js'
-import { formatNumber, formatWon, todayISO } from '../lib/format.js'
+import { formatNumber, formatWon, josa, todayISO } from '../lib/format.js'
 import { budgetAlerts, monthlyBudgetReport } from '../lib/stats.js'
 import { displayName } from '../lib/accounts.js'
 import { isOffBudget, offBudgetTag } from '../lib/categories.js'
@@ -64,6 +64,7 @@ export default function Add() {
       <div className="card">
         <BudgetMeter
           {...meter}
+          compact
           hint={user.isAdmin ? '설정 탭에서 정하기' : '한도 미설정'}
         />
       </div>
@@ -126,7 +127,8 @@ export default function Add() {
 
       {!busy && missing.length > 0 && (
         <p className="hint" style={{ textAlign: 'center' }}>
-          {missing.join(' · ')}을(를) 입력하면 저장할 수 있어요
+          {missing.join(' · ')}
+          {josa(missing[missing.length - 1], '을', '를')} 입력하면 저장할 수 있어요
         </p>
       )}
     </div>

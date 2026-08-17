@@ -22,6 +22,14 @@ function trim(x) {
   return Number.isInteger(r) ? String(r) : r.toFixed(1)
 }
 
+/** 받침 유무에 따라 조사를 고른다. josa('메모', '을', '를') → '를' */
+export function josa(word, withBatchim, withoutBatchim) {
+  const last = String(word || '').trim().slice(-1)
+  const code = last.charCodeAt(0)
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return withoutBatchim
+  return (code - 0xac00) % 28 === 0 ? withoutBatchim : withBatchim
+}
+
 export function todayISO(now = new Date()) {
   const tz = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
   return tz.toISOString().slice(0, 10)
