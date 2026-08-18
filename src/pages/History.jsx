@@ -6,6 +6,7 @@ import { monthTitle, shiftMonth } from '../lib/periods.js'
 import { removeExpense, setReaction, updateExpense } from '../lib/store.js'
 import { displayName } from '../lib/accounts.js'
 import CategoryPicker from '../components/CategoryPicker.jsx'
+import AmountInput from '../components/AmountInput.jsx'
 
 export default function History() {
   const { user, expenses, today, notify } = useApp()
@@ -215,13 +216,7 @@ function EditSheet({ expense, onClose, notify }) {
         <h3>지출 수정</h3>
 
         <div className="limit-input">
-          <input
-            type="number"
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            aria-label="금액"
-          />
+          <AmountInput value={amount} onChange={setAmount} label="금액" />
           <span>원</span>
         </div>
 

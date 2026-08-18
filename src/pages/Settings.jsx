@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import BudgetMeter from '../components/BudgetMeter.jsx'
 import AlertBanner from '../components/AlertBanner.jsx'
 import CategoryEditor from '../components/CategoryEditor.jsx'
+import AmountInput from '../components/AmountInput.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { ACCOUNTS, displayName } from '../lib/accounts.js'
 import { formatNumber, formatWon } from '../lib/format.js'
@@ -183,14 +184,7 @@ function BudgetSheet({ month, budget, user, notify, onClose }) {
             <span>월 생활비 한도</span>
           </div>
           <div className="limit-input">
-            <input
-              type="number"
-              inputMode="numeric"
-              value={limit}
-              onChange={(e) => setLimit(e.target.value)}
-              placeholder="0"
-              aria-label="월 생활비 한도"
-            />
+            <AmountInput value={limit} onChange={setLimit} label="월 생활비 한도" />
             <span>원</span>
           </div>
           <p className="hint" style={{ marginTop: 6 }}>
@@ -209,14 +203,11 @@ function BudgetSheet({ month, budget, user, notify, onClose }) {
                 <span aria-hidden="true">{account.emoji}</span> {account.name}
               </span>
               <div className="limit-input" style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  inputMode="numeric"
+                <AmountInput
                   value={allowances[account.username]}
-                  onChange={(e) =>
-                    setAllowances((prev) => ({ ...prev, [account.username]: e.target.value }))}
-                  placeholder="0"
-                  aria-label={`${account.name} 용돈`}
+                  onChange={(next) =>
+                    setAllowances((prev) => ({ ...prev, [account.username]: next }))}
+                  label={`${account.name} 용돈`}
                 />
                 <span>원</span>
               </div>
