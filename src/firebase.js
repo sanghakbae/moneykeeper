@@ -1,7 +1,11 @@
 // Firebase 초기화. VITE_FIREBASE_* 가 없으면 초기화하지 않고 로컬 저장소 모드로 동작한다.
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 const env = import.meta.env
 
@@ -28,7 +32,12 @@ let db = null
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig)
   auth = getAuth(app)
-  db = getFirestore(app)
+
+  // 오프라인 캐시. 비행기 모드에서도 지난 내역을 보고 새 지출을 적을 수 있고,
+  // 연결되면 Firestore 가 알아서 밀어 넣는다. 저장소는 여전히 Firestore 하나다.
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  })
 }
 
 export { app, auth, db }

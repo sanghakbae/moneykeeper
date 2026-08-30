@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 머니키퍼 아이콘 원본.
+       PNG·파비콘은 전부 이 파일에서 생성한다(npm run icons).
+       색이나 모양을 바꾸려면 여기만 고치면 된다.
+       16px 파비콘에서도 형태가 뭉개지지 않도록 요소를 크고 단순하게 유지할 것. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a92e8"/>
+      <stop offset="1" stop-color="#1f66bd"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- 지갑 본체 -->
+  <rect x="88" y="150" width="336" height="228" rx="46" fill="#ffffff"/>
+
+  <!-- 카드 띠 -->
+  <rect x="88" y="222" width="336" height="46" fill="#cfe0f7"/>
+
+  <!-- 잠금 고리 — 오른쪽 밖으로 살짝 나가 실루엣을 만든다 -->
+  <rect x="286" y="286" width="164" height="76" rx="38" fill="#12508f"/>
+  <circle cx="386" cy="324" r="20" fill="#ffffff"/>
+</svg>

@@ -59,15 +59,19 @@ export default function Add() {
 
   return (
     <div className="screen">
+      {/* 경고가 뜨면 배너가 사용률과 남은 금액을 이미 말해 준다.
+          미터까지 함께 두면 같은 내용이 두 번 나오고, 저장 버튼이 화면 밖으로 밀린다. */}
       <AlertBanner alerts={alerts} />
 
-      <div className="card">
-        <BudgetMeter
-          {...meter}
-          compact
-          hint={user.isAdmin ? '설정 탭에서 정하기' : '한도 미설정'}
-        />
-      </div>
+      {alerts.length === 0 && (
+        <div className="card">
+          <BudgetMeter
+            {...meter}
+            compact
+            hint={user.isAdmin ? '설정 탭에서 정하기' : '한도 미설정'}
+          />
+        </div>
+      )}
 
       <CategoryPicker value={categoryId} onChange={setCategoryId} />
 

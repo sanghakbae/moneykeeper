@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from './context/AppContext.jsx'
+import UpdateBanner from './components/UpdateBanner.jsx'
+import IosInstallHint from './components/IosInstallHint.jsx'
+import { registerServiceWorker, shouldShowIosHint } from './lib/pwa.js'
 import Login from './pages/Login.jsx'
 import Add from './pages/Add.jsx'
 import History from './pages/History.jsx'
@@ -16,6 +19,19 @@ const TABS = [
 function Shell() {
   const { user, authReady, dataError, toast, isFirebaseConfigured } = useApp()
   const [tab, setTab] = useState('add')
+  const [updateReady, setUpdateReady] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(false)
+
+  useEffect(() => {
+    registerServiceWorker(() => setUpdateReady(true))
+  }, [])
+
+  // 로그인한 뒤에 안내한다 — 로그인 화면에서 가리면 방해만 된다.
+  useEffect(() => {
+    if (!user) return undefined
+    const id = setTimeout(() => setShowIosHint(shouldShowIosHint()), 1200)
+    return () => clearTimeout(id)
+  }, [user])
 
   if (!isFirebaseConfigured) {
     return (
@@ -92,6 +108,8 @@ function Shell() {
         ))}
       </nav>
 
+      {updateReady && <UpdateBanner onDismiss={() => setUpdateReady(false)} />}
+      {showIosHint && <IosInstallHint onClose={() => setShowIosHint(false)} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   )

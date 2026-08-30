@@ -28,6 +28,11 @@
 
   --radius: 5px;
   --tap: 44px;
+
+  /* 입력칸 전용 글자 크기. iOS 는 16px 미만 입력칸에 포커스가 가면 화면을 통째로
+     확대하므로, 모바일에서 글자를 줄일 때도 이 값만은 절대 내리지 않는다.
+     test/css.test.js 가 회귀를 막는다. */
+  --input-font: 16px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,17 +73,21 @@ body {
   overscroll-behavior-y: none;
 }
 
-button,
-input,
-select {
+button {
   font: inherit;
   color: inherit;
-}
-
-button {
   border: none;
   background: none;
   cursor: pointer;
+}
+
+/* 입력칸 글자 크기는 반드시 --input-font(16px 이상)를 쓴다. iOS 확대 방지. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+  font-size: var(--input-font);
 }
 
 .app {
@@ -346,7 +355,7 @@ button {
   border-radius: 5px;
   border: 1.5px solid var(--baseline);
   background: var(--page);
-  font-size: 16px;
+  font-size: var(--input-font);
 }
 
 .pw-wrap input:focus {
@@ -1111,9 +1120,13 @@ button {
 .limit-input input,
 input.limit-input {
   flex: 1;
-  height: 34px;
-  font-size: 13px;
-  padding: 0 9px;
+  /* flex 항목은 기본적으로 내용(입력칸 기본 폭)보다 작아지지 않는다.
+     min-width 를 풀어 주지 않으면 좁은 화면에서 옆으로 삐져나간다. */
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  font-size: var(--input-font);
+  padding: 0 8px;
   border-radius: 5px;
   border: 1px solid var(--baseline);
   background: var(--surface-1);
@@ -1202,12 +1215,12 @@ table.data th {
 }
 
 .cat-edit input {
-  height: 34px;
+  height: 36px;
   border-radius: 5px;
   border: 1px solid var(--baseline);
   background: var(--surface-1);
-  font-size: 14px;
-  padding: 0 8px;
+  font-size: var(--input-font);
+  padding: 0 7px;
 }
 
 .cat-edit-emoji {
@@ -1276,10 +1289,10 @@ table.data th {
 
 .cat-filter select {
   flex: 1;
-  height: 32px;
+  height: 34px;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--input-font);
   font-weight: 600;
   text-align: right;
   direction: rtl;
@@ -1310,4 +1323,143 @@ input.needs-input::placeholder {
 
 .meter.compact .meter-track {
   height: 5px;
+}
+
+/* --------------------------- PWA — 업데이트 알림 --------------------------- */
+
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 66px);
+  transform: translateX(-50%);
+  z-index: 70;
+  width: calc(100% - 24px);
+  max-width: 456px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 12px 30px -12px rgba(11, 11, 11, 0.4);
+}
+
+.update-banner .icon {
+  font-size: 18px;
+  line-height: 1;
+  flex: none;
+}
+
+.update-banner .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-banner .t {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.update-banner .d {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.update-banner .later,
+.update-banner .now {
+  flex: none;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.update-banner .later {
+  color: var(--ink-2);
+  border: 1px solid var(--baseline);
+}
+
+.update-banner .now {
+  background: var(--series-1);
+  color: #fff;
+}
+
+/* ------------------------ PWA — iOS 홈 화면 추가 안내 ------------------------ */
+
+.ios-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 66px);
+  transform: translateX(-50%);
+  z-index: 65;
+  width: calc(100% - 24px);
+  max-width: 456px;
+  padding: 12px;
+  border-radius: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 12px 30px -12px rgba(11, 11, 11, 0.4);
+}
+
+.ios-hint .head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ios-hint .app-icon img {
+  display: block;
+  border-radius: 5px;
+}
+
+.ios-hint .t {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.ios-hint .d {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.ios-hint .close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ios-hint .steps {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.ios-hint .steps b {
+  color: var(--ink);
+}
+
+.ios-hint .share-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 2px;
+  vertical-align: -6px;
+  border-radius: 5px;
+  border: 1px solid var(--hairline);
+  background: var(--page);
+  color: var(--series-1);
 }
