@@ -1512,3 +1512,19 @@ input.needs-input::placeholder {
 .allowance-list .hint {
   margin-top: 2px;
 }
+
+/* 사람별 표 — 생활비·용돈·고정비를 열로 쪼갠다. 좁아서 글자를 줄이고 남으면 가로 스크롤 */
+.member-table {
+  font-size: 11.5px;
+}
+
+.member-table th,
+.member-table td {
+  padding: 5px 2px;
+  white-space: nowrap;
+}
+
+.member-table td:first-child,
+.member-table th:first-child {
+  font-size: 12.5px;
+}

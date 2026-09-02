@@ -12,12 +12,22 @@ import {
 } from '../lib/stats.js'
 import { compactWon, formatWon } from '../lib/format.js'
 import { displayName } from '../lib/accounts.js'
-import { ALLOWANCE_CATEGORY_ID, getCategory } from '../lib/categories.js'
+import { ALLOWANCE_CATEGORY_ID, getCategory, isFixedCost } from '../lib/categories.js'
+
+const KIND_LABEL = { living: '생활비', allowance: '용돈', fixed: '고정비' }
+
+const KIND_NOTE = {
+  all: '생활비 + 용돈 + 고정비를 모두 합칩니다.',
+  living: '생활비만 — 고정비와 용돈은 뺐습니다.',
+  allowance: '용돈만 — 매달 정한 지정액입니다.',
+  fixed: '고정비만 — 관리비·전기세·보험료 등입니다.',
+}
 
 export default function Stats() {
   const { expenses, budgets, categories: catalog, today } = useApp()
   const [unit, setUnit] = useState('month')
   const [scope, setScope] = useState('all')
+  const [kind, setKind] = useState('all')
   const [categoryId, setCategoryId] = useState('all')
   const [showTable, setShowTable] = useState(false)
   const [detail, setDetail] = useState(false)
@@ -32,14 +42,21 @@ export default function Stats() {
   // 통계에는 용돈 지정액도 지출로 얹는다. 고정비는 원래 기록이라 그대로 들어간다.
   const allExpenses = useMemo(() => withAllowances(expenses, budgets), [expenses, budgets])
 
+  // 종류 구분 — 용돈은 가상 항목, 고정비는 카테고리 표시, 나머지가 생활비다.
+  const kindOf = (e) => {
+    if (e.categoryId === ALLOWANCE_CATEGORY_ID) return 'allowance'
+    return isFixedCost(e.categoryId) ? 'fixed' : 'living'
+  }
+
   const filtered = useMemo(
     () =>
       allExpenses.filter(
         (e) =>
           (scope === 'all' || e.username === scope) &&
+          (kind === 'all' || kindOf(e) === kind) &&
           (categoryId === 'all' || e.categoryId === categoryId),
       ),
-    [allExpenses, scope, categoryId],
+    [allExpenses, scope, kind, categoryId],
   )
 
   const series = useMemo(
@@ -72,6 +89,17 @@ export default function Stats() {
         : [],
     [filtered, unit, activeBucket],
   )
+
+  // 사람별 표는 종류를 열로 쪼개 보여주므로 종류 필터를 적용하지 않은 목록을 쓴다.
+  const inBucketAllKinds = useMemo(() => {
+    if (!activeBucket) return []
+    return allExpenses.filter(
+      (e) =>
+        bucketKey(e.date, unit) === activeBucket.key &&
+        (scope === 'all' || e.username === scope) &&
+        (categoryId === 'all' || e.categoryId === categoryId),
+    )
+  }, [allExpenses, unit, activeBucket, scope, categoryId])
   const bucketTitle = activeBucket ? activeBucket.title : ''
 
   const totals = series.map((s) => s.total)
@@ -80,7 +108,19 @@ export default function Stats() {
   const average = nonZero.length ? sum / nonZero.length : 0
   const peak = series.reduce((best, s) => (s.total > (best?.total || 0) ? s : best), null)
 
-  const members = useMemo(() => totalsByUser(inBucket), [inBucket])
+  // 사람마다 생활비·용돈·고정비를 따로 센다. 한 칸에 합쳐 놓으면
+  // '엄마 용돈 30만' 인데 생활비까지 더해진 값처럼 보인다.
+  const members = useMemo(() => {
+    const rows = new Map()
+    for (const e of inBucketAllKinds) {
+      const row = rows.get(e.username) || { username: e.username, living: 0, allowance: 0, fixed: 0 }
+      row[kindOf(e)] += e.amount || 0
+      rows.set(e.username, row)
+    }
+    return [...rows.values()]
+      .map((r) => ({ ...r, total: r.living + r.allowance + r.fixed }))
+      .sort((a, b) => b.total - a.total)
+  }, [inBucketAllKinds])
 
   // 기본은 그룹(식생활·이동·…) 단위 — 컬리·쿠팡·토스가 식생활로 묶여 보인다.
   const breakdown = useMemo(() => {
@@ -112,6 +152,24 @@ export default function Stats() {
             type="button"
             aria-pressed={unit === option.id}
             onClick={() => setUnit(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="seg">
+        {[
+          { id: 'all', label: '전체' },
+          { id: 'living', label: '생활비' },
+          { id: 'allowance', label: '용돈' },
+          { id: 'fixed', label: '고정비' },
+        ].map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={kind === option.id}
+            onClick={() => setKind(option.id)}
           >
             {option.label}
           </button>
@@ -157,15 +215,15 @@ export default function Stats() {
       {/* 가족 전체는 생활비·용돈·고정비를 전부 합친 값이고,
           한 사람을 고르면 그 사람이 용돈으로 쓴 내역이 된다. */}
       <p className="hint" style={{ margin: '-2px 2px 0' }}>
-        {scope === 'all'
-          ? '가족 전체 — 생활비 + 용돈 + 고정비를 모두 합칩니다.'
-          : `${displayName(scope)} — 쓴 지출과 받은 용돈을 합칩니다.`}
+        {KIND_NOTE[kind]}
+        {scope !== 'all' && ` · ${displayName(scope)}만 봅니다.`}
       </p>
 
       <div className="card">
         <div className="section-title">
           <span>
             {g.label} 지출 추이
+            {kind !== 'all' && ` · ${KIND_LABEL[kind]}`}
             {categoryId !== 'all' && ` · ${getCategory(categoryId).name}`}
           </span>
           <button type="button" className="link-btn" onClick={() => setShowTable((v) => !v)}>
@@ -234,37 +292,35 @@ export default function Stats() {
         </div>
       )}
 
-      {scope === 'all' && members.length > 0 && (
+      {members.length > 0 && (
         <div className="card">
           <div className="section-title">
             <span>사람별</span>
             <span className="hint">{bucketTitle}</span>
           </div>
-          <table className="data">
+          <table className="data member-table">
             <thead>
               <tr>
                 <th>가족</th>
-                <th>지출</th>
-                <th>가장 많이 쓴 곳</th>
+                <th>생활비</th>
+                <th>용돈</th>
+                <th>고정비</th>
               </tr>
             </thead>
             <tbody>
-              {members.map((m) => {
-                const top = totalsByCategory(inBucket.filter((e) => e.username === m.username))[0]
-                return (
-                  <tr key={m.username}>
-                    <td>{displayName(m.username)}</td>
-                    <td>{formatWon(m.total)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      {top ? `${getCategory(top.categoryId).emoji} ${getCategory(top.categoryId).name}` : '-'}
-                    </td>
-                  </tr>
-                )
-              })}
+              {members.map((m) => (
+                <tr key={m.username}>
+                  <td>{displayName(m.username)}</td>
+                  <td>{m.living ? formatWon(m.living) : '-'}</td>
+                  <td>{m.allowance ? formatWon(m.allowance) : '-'}</td>
+                  <td>{m.fixed ? formatWon(m.fixed) : '-'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
+
     </div>
   )
 }
