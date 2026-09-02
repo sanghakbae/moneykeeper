@@ -73,8 +73,18 @@ export function categoryGroups(list = active) {
   return groups
 }
 
+/**
+ * 통계에서만 쓰는 가상 카테고리. 용돈은 지출 기록이 아니라 설정값이라
+ * 카테고리 목록에는 없지만, 통계에서는 한 항목으로 보여야 한다.
+ */
+export const ALLOWANCE_CATEGORY_ID = '__allowance__'
+
+const VIRTUAL = new Map([
+  [ALLOWANCE_CATEGORY_ID, { id: ALLOWANCE_CATEGORY_ID, name: '용돈', emoji: '🧧', group: '용돈' }],
+])
+
 export function getCategory(id) {
-  return byId.get(id) || { id, name: '미분류', emoji: '❓', group: '' }
+  return byId.get(id) || VIRTUAL.get(id) || { id, name: '미분류', emoji: '❓', group: '' }
 }
 
 /** 고정비 표시. 분류를 알려 줄 뿐 한도 계산에는 영향이 없다. */

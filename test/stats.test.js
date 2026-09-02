@@ -1,7 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildBuckets } from '../src/lib/periods.js'
-import { DEFAULT_CATEGORIES, setCategories } from '../src/lib/categories.js'
+import {
+  ALLOWANCE_CATEGORY_ID,
+  DEFAULT_CATEGORIES,
+  getCategory,
+  setCategories,
+} from '../src/lib/categories.js'
 import {
   budgetAlerts,
   budgetStatus,
@@ -10,6 +15,7 @@ import {
   sumByBucket,
   totalsByCategory,
   totalsByGroup,
+  withAllowances,
 } from '../src/lib/stats.js'
 
 const expense = (username, categoryId, amount, date) => ({ username, categoryId, amount, date })
@@ -193,4 +199,34 @@ test('totalsByGroup 은 하위 카테고리를 그룹으로 묶는다', () => {
   assert.equal(rows[1].topCategoryId, 'grocery')
   assert.equal(rows[1].categoryCount, 4)
   assert.equal(Math.round(rows[1].share * 100), 32)
+})
+
+test('통계용 목록에는 용돈 지정액이 지출로 얹힌다', () => {
+  const rows = withAllowances(
+    [expense('brpark', 'food', 100000, '2026-09-05')],
+    {
+      '2026-09': { limit: 2000000, allowances: { hgbae: 200000, shbae: 0 } },
+      '2026-08': { limit: 2000000, allowances: { hgbae: 150000 } },
+    },
+  )
+  const 용돈 = rows.filter((r) => r.categoryId === ALLOWANCE_CATEGORY_ID)
+  assert.equal(rows.length, 3, '기록 1건 + 용돈 2건(0원짜리는 제외)')
+  assert.deepEqual(
+    용돈.map((r) => [r.date, r.username, r.amount]).sort(),
+    [['2026-08-01', 'hgbae', 150000], ['2026-09-01', 'hgbae', 200000]],
+  )
+  assert.equal(getCategory(ALLOWANCE_CATEGORY_ID).name, '용돈')
+})
+
+test('용돈을 얹어도 한도 계산은 그대로다', () => {
+  const budgets = { '2026-09': { limit: 2000000, allowances: { hgbae: 200000 } } }
+  const raw = [expense('brpark', 'food', 100000, '2026-09-05')]
+  const report = monthlyBudgetReport(raw, '2026-09', budgets['2026-09'])
+  assert.equal(report.household.spent, 100000, '한도에는 용돈이 들어가지 않는다')
+
+  // 통계 쪽 합계는 용돈까지 포함
+  const total = withAllowances(raw, budgets)
+    .filter((e) => e.date.startsWith('2026-09'))
+    .reduce((sum, e) => sum + e.amount, 0)
+  assert.equal(total, 300000)
 })

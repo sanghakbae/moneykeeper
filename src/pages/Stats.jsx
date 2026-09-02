@@ -2,18 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import TrendChart from '../components/TrendChart.jsx'
 import CategoryBars from '../components/CategoryBars.jsx'
 import { useApp } from '../context/AppContext.jsx'
-import BudgetMeter from '../components/BudgetMeter.jsx'
 import { GRANULARITIES, bucketKey, buildBuckets, granularity } from '../lib/periods.js'
 import {
-  budgetStatus,
   sumByBucket,
+  withAllowances,
   totalsByCategory,
   totalsByGroup,
   totalsByUser,
 } from '../lib/stats.js'
 import { compactWon, formatWon } from '../lib/format.js'
 import { displayName } from '../lib/accounts.js'
-import { getCategory } from '../lib/categories.js'
+import { ALLOWANCE_CATEGORY_ID, getCategory } from '../lib/categories.js'
 
 export default function Stats() {
   const { expenses, budgets, categories: catalog, today } = useApp()
@@ -30,14 +29,17 @@ export default function Stats() {
     [unit, g.count, g.calendarYear, today],
   )
 
+  // 통계에는 용돈 지정액도 지출로 얹는다. 고정비는 원래 기록이라 그대로 들어간다.
+  const allExpenses = useMemo(() => withAllowances(expenses, budgets), [expenses, budgets])
+
   const filtered = useMemo(
     () =>
-      expenses.filter(
+      allExpenses.filter(
         (e) =>
           (scope === 'all' || e.username === scope) &&
           (categoryId === 'all' || e.categoryId === categoryId),
       ),
-    [expenses, scope, categoryId],
+    [allExpenses, scope, categoryId],
   )
 
   const series = useMemo(
@@ -79,20 +81,6 @@ export default function Stats() {
   const peak = series.reduce((best, s) => (s.total > (best?.total || 0) ? s : best), null)
 
   const members = useMemo(() => totalsByUser(inBucket), [inBucket])
-
-  // 한 사람을 골랐을 때, 그 구간이 한 달 안이면 용돈 지정액 대비 사용액을 보여준다.
-  // (분기·반기·연은 여러 달이 섞여 용돈 한도를 견줄 기준이 없다.)
-  const allowanceStatus = useMemo(() => {
-    if (scope === 'all' || !activeBucket) return null
-    if (unit !== 'month' && unit !== 'day') return null
-    const ym = unit === 'month' ? activeBucket.key : activeBucket.key.slice(0, 7)
-    const limit = Number(budgets[ym]?.allowances?.[scope]) || 0
-    if (limit <= 0) return null
-    const spent = expenses
-      .filter((e) => e.username === scope && e.date.slice(0, 7) === ym)
-      .reduce((total, e) => total + (e.amount || 0), 0)
-    return budgetStatus(limit, spent)
-  }, [scope, unit, activeBucket, budgets, expenses])
 
   // 기본은 그룹(식생활·이동·…) 단위 — 컬리·쿠팡·토스가 식생활로 묶여 보인다.
   const breakdown = useMemo(() => {
@@ -157,6 +145,7 @@ export default function Stats() {
           onChange={(e) => setCategoryId(e.target.value)}
         >
           <option value="all">전체</option>
+          <option value={ALLOWANCE_CATEGORY_ID}>🧧 용돈</option>
           {catalog.map((c) => (
             <option key={c.id} value={c.id}>
               {c.emoji} {c.name}
@@ -170,18 +159,8 @@ export default function Stats() {
       <p className="hint" style={{ margin: '-2px 2px 0' }}>
         {scope === 'all'
           ? '가족 전체 — 생활비 + 용돈 + 고정비를 모두 합칩니다.'
-          : `${displayName(scope)} 용돈 사용 내역입니다.`}
+          : `${displayName(scope)} — 쓴 지출과 받은 용돈을 합칩니다.`}
       </p>
-
-      {scope !== 'all' && allowanceStatus && (
-        <div className="card">
-          <BudgetMeter
-            compact
-            label={`${displayName(scope)} 용돈 · ${activeBucket?.title ?? ''}`}
-            status={allowanceStatus}
-          />
-        </div>
-      )}
 
       <div className="card">
         <div className="section-title">

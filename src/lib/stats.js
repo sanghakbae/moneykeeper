@@ -1,7 +1,7 @@
 // 집계·한도 계산. 브라우저 API 를 쓰지 않는 순수 함수라 node --test 로 검증한다.
 
 import { bucketKey } from './periods.js'
-import { getCategory, isFixedCost, isOffBudget } from './categories.js'
+import { ALLOWANCE_CATEGORY_ID, getCategory, isFixedCost, isOffBudget } from './categories.js'
 
 /** 한도의 30% 가 남았을 때부터 경고 → 사용률 70% 이상이면 warn, 100% 이상이면 over */
 export const WARN_RATIO = 0.7
@@ -160,4 +160,29 @@ export function budgetAlerts(report, nameOf = (u) => u) {
   // 용돈·고정비는 한도 밖이라 경고 대상이 아니다.
   push('이번 달 생활비', report.household)
   return alerts
+}
+
+/**
+ * 통계용 지출 목록 — 실제 기록에 매달 용돈 지정액을 지출로 얹는다.
+ * 용돈은 설정값이라 기록에는 없지만, 통계에서는 쓴 돈으로 보여야 한다.
+ * 한도 계산(monthlyBudgetReport)에는 절대 넣지 않는다 — 거기선 용돈이 한도 밖이다.
+ */
+export function withAllowances(expenses, budgets) {
+  const rows = []
+  for (const [ym, budget] of Object.entries(budgets || {})) {
+    for (const [username, amount] of Object.entries(budget?.allowances || {})) {
+      const value = Number(amount) || 0
+      if (value <= 0) continue
+      rows.push({
+        id: `allowance-${ym}-${username}`,
+        username,
+        categoryId: ALLOWANCE_CATEGORY_ID,
+        amount: value,
+        date: `${ym}-01`,
+        memo: '용돈',
+        synthetic: true,
+      })
+    }
+  }
+  return rows.length ? [...expenses, ...rows] : expenses
 }
