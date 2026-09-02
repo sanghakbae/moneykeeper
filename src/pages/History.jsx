@@ -99,21 +99,17 @@ export default function History() {
                         : notify('내가 쓴 기록만 고칠 수 있어요')}
                   >
                     <span className="emoji" aria-hidden="true">{category.emoji}</span>
-                    <span className="body">
-                      <span className="title">{category.name}</span>
-                      <span className="meta">
-                        {displayName(expense.username)}
-                        {expense.memo ? ` · ${expense.memo}` : ''}
-                        {categoryTag(expense.categoryId)
-                          ? ` · ${categoryTag(expense.categoryId)}`
-                          : ''}
-                      </span>
+                    <span className="title">{category.name}</span>
+                    <span className="meta">
+                      {displayName(expense.username)}
+                      {expense.memo ? ` · ${expense.memo}` : ''}
+                      {categoryTag(expense.categoryId)
+                        ? ` · ${categoryTag(expense.categoryId)}`
+                        : ''}
                     </span>
-                  </button>
-                  <span className="right">
                     <span className="amount">{formatWon(expense.amount)}</span>
-                    <Reactions expense={expense} notify={notify} />
-                  </span>
+                  </button>
+                  <Reactions expense={expense} notify={notify} />
                 </div>
               )
             })}
