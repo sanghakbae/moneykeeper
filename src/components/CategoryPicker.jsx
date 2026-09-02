@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { categoryGroups, getCategory, offBudgetTag } from '../lib/categories.js'
+import { categoryGroups, categoryTag, getCategory } from '../lib/categories.js'
 import { useApp } from '../context/AppContext.jsx'
 
 /** 카테고리 선택 — 그룹 탭으로 나눠 한 화면에 담는다. */
@@ -18,7 +18,7 @@ export default function CategoryPicker({ value, onChange }) {
         {value && (
           <span className="hint">
             {getCategory(value).emoji} {getCategory(value).name}
-            {offBudgetTag(value) ? ` · ${offBudgetTag(value)}` : ''}
+            {categoryTag(value) ? ` · ${categoryTag(value)}` : ''}
           </span>
         )}
       </div>
@@ -46,7 +46,7 @@ export default function CategoryPicker({ value, onChange }) {
           >
             <span className="emoji" aria-hidden="true">{c.emoji}</span>
             <span className="name">{c.name}</span>
-            {offBudgetTag(c.id) && <span className="fixed-tag">{offBudgetTag(c.id)}</span>}
+            {categoryTag(c.id) && <span className="fixed-tag">{categoryTag(c.id)}</span>}
           </button>
         ))}
       </div>

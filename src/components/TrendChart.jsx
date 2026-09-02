@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
 import { compactWon, formatWon } from '../lib/format.js'
 
 const W = 340
 const H = 196
 const PAD = { top: 22, right: 8, bottom: 24, left: 36 }
-const MIN_LABEL_GAP = 30 // 뷰박스 단위 — 이보다 가까운 x축 라벨은 겹치므로 버린다
+// 10px 글자 기준 글자 하나의 대략적인 폭(뷰박스 단위)과 라벨 사이 최소 여백.
+const CHAR_W = 5.6
+const LABEL_PAD = 4
 
 /** 윗변만 둥근 막대 — 바닥(축)에는 붙는다. */
 function barPath(x, y, w, h, r = 4) {
@@ -29,20 +30,27 @@ function niceMax(value) {
   return step * magnitude
 }
 
-/** 겹치지 않는 x축 라벨만 고른다. 선택한 막대는 무조건 살린다. */
-function pickLabels(count, selectedIndex, xOf) {
-  const stride = Math.max(1, Math.ceil(count / 6))
+/**
+ * 겹치지 않는 x축 라벨만 고른다. 선택한 막대는 무조건 살린다.
+ * 필요한 간격은 라벨 글자 수로 계산한다 — '1'~'12' 는 12개가 다 들어가고,
+ * '8/17' 이나 '24년 4Q' 처럼 긴 라벨은 자동으로 솎인다.
+ */
+function pickLabels(labels, selectedIndex, xOf) {
+  const halfWidth = (i) => (String(labels[i] ?? '').length * CHAR_W) / 2
+  const fits = (a, b) =>
+    Math.abs(xOf(a) - xOf(b)) >= halfWidth(a) + halfWidth(b) + LABEL_PAD
+
   const candidates = [
     selectedIndex,
-    count - 1,
+    labels.length - 1,
     0,
-    ...Array.from({ length: count }, (_, i) => i).filter((i) => i % stride === 0),
+    ...labels.map((_, i) => i),
   ]
   const kept = []
   for (const i of candidates) {
-    if (i < 0 || i >= count) continue
+    if (i < 0 || i >= labels.length) continue
     if (kept.includes(i)) continue
-    if (kept.some((k) => Math.abs(xOf(k) - xOf(i)) < MIN_LABEL_GAP)) continue
+    if (kept.some((k) => !fits(k, i))) continue
     kept.push(i)
   }
   return new Set(kept)
@@ -52,16 +60,11 @@ function pickLabels(count, selectedIndex, xOf) {
  * 단일 계열 막대 차트. 계열이 하나뿐이라 범례는 두지 않고,
  * 값은 상단 판독부(선택한 구간)와 표 보기가 대신한다.
  */
-export default function TrendChart({ data, unitLabel }) {
-  const [selected, setSelected] = useState(data.length - 1)
-
-  useEffect(() => {
-    setSelected(data.length - 1)
-  }, [data.length, unitLabel])
-
+export default function TrendChart({ data, unitLabel, selectedKey, onSelect }) {
   if (!data.length) return null
 
-  const index = Math.min(selected, data.length - 1)
+  const found = data.findIndex((d) => d.key === selectedKey)
+  const index = found >= 0 ? found : data.length - 1
   const active = data[index]
   const grandTotal = data.reduce((sum, d) => sum + d.total, 0)
 
@@ -82,8 +85,10 @@ export default function TrendChart({ data, unitLabel }) {
   const barW = Math.min(22, Math.max(5, band - 6))
   const y = (v) => PAD.top + plotH - (v / max) * plotH
   const centerOf = (i) => PAD.left + band * i + band / 2
-  const labelled = pickLabels(data.length, index, centerOf)
   // 축의 첫 라벨에는 연도를 붙인다 — 그래야 '4Q, 2Q' 가 어느 해인지 알 수 있다.
+  // (월별은 1~12 숫자만 쓰므로 labelWithYear 도 같은 값이다.)
+  const labelTexts = data.map((d, i) => (i === 0 ? d.labelWithYear || d.label : d.label))
+  const labelled = pickLabels(labelTexts, index, centerOf)
   const firstLabelled = Math.min(...labelled)
 
   const activeX = centerOf(index)
@@ -120,7 +125,7 @@ export default function TrendChart({ data, unitLabel }) {
           const isOn = i === index
           const h = PAD.top + plotH - y(d.total)
           return (
-            <g key={d.key} onClick={() => setSelected(i)} style={{ cursor: 'pointer' }}>
+            <g key={d.key} onClick={() => onSelect(d.key)} style={{ cursor: 'pointer' }}>
               <rect
                 x={PAD.left + band * i}
                 y={PAD.top}

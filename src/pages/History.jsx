@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
-import { getCategory, offBudgetTag } from '../lib/categories.js'
+import { categoryTag, getCategory } from '../lib/categories.js'
 import { formatDateLabel, formatWon } from '../lib/format.js'
 import { monthTitle, shiftMonth } from '../lib/periods.js'
 import { removeExpense, setReaction, updateExpense } from '../lib/store.js'
@@ -104,8 +104,8 @@ export default function History() {
                       <span className="meta">
                         {displayName(expense.username)}
                         {expense.memo ? ` · ${expense.memo}` : ''}
-                        {offBudgetTag(expense.categoryId)
-                          ? ` · ${offBudgetTag(expense.categoryId)}`
+                        {categoryTag(expense.categoryId)
+                          ? ` · ${categoryTag(expense.categoryId)}`
                           : ''}
                       </span>
                     </span>

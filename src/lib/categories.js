@@ -3,8 +3,8 @@
 // 기본 목록은 코드에 두고, 관리자가 설정에서 고치면 Firestore(settings/categories)의
 // 목록이 기준이 된다. 앱이 뜰 때 setCategories() 로 갈아끼운다.
 //
-// fixed  : 고정비 — 매월 정해진 금액이 나가므로 생활비 한도에서 뺀다(보험료·전기세 등).
-// offBudget : 고정비는 아니지만 한도에서 빼는 것(용돈).
+// fixed  : 고정비 표시(보험료·전기세 등). 분류용 꼬리표일 뿐, 한도에서 빠지지 않는다.
+// offBudget : 관리자가 '한도 제외'로 지정한 카테고리. 이것만 생활비 한도에서 빠진다.
 
 export const DEFAULT_CATEGORIES = [
   // 식생활
@@ -77,21 +77,30 @@ export function getCategory(id) {
   return byId.get(id) || { id, name: '미분류', emoji: '❓', group: '' }
 }
 
+/** 고정비 표시. 분류를 알려 줄 뿐 한도 계산에는 영향이 없다. */
 export function isFixedCost(id) {
   return Boolean(byId.get(id)?.fixed)
 }
 
-/** 생활비 한도에서 빼는 카테고리 — 고정비와 용돈. */
+/**
+ * 생활비 한도에서 빼는 카테고리.
+ * 기본은 '전부 포함' 이고, 관리자가 '한도 제외'로 표시한 것만 빠진다.
+ * (고정비·용돈도 생활비에 포함한다 — 사용자 요청)
+ */
 export function isOffBudget(id) {
-  const category = byId.get(id)
-  return Boolean(category?.fixed || category?.offBudget)
+  return Boolean(byId.get(id)?.offBudget)
 }
 
-/** 한도에서 빠지는 이유를 화면에 붙일 짧은 꼬리표. 해당 없으면 빈 문자열. */
+/** 한도에서 빠지는 카테고리에만 붙이는 꼬리표. */
 export function offBudgetTag(id) {
+  return isOffBudget(id) ? '한도 제외' : ''
+}
+
+/** 목록·선택기에 붙이는 분류 꼬리표(고정비 표시 포함). */
+export function categoryTag(id) {
   const category = byId.get(id)
-  if (category?.fixed) return '고정비'
   if (category?.offBudget) return '한도 제외'
+  if (category?.fixed) return '고정비'
   return ''
 }
 

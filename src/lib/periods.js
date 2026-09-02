@@ -1,11 +1,13 @@
 // 기간 단위(일/월/분기/반기/연) 버킷 계산. 순수 함수라 node --test 로 검증한다.
 
+// noun: 요약 타일 문구용 단위 이름. unit: 개수 뒤에 붙는 말.
 export const GRANULARITIES = [
-  { id: 'day', label: '일별', count: 14 },
-  { id: 'month', label: '월별', count: 12 },
-  { id: 'quarter', label: '분기별', count: 8 },
-  { id: 'half', label: '반기별', count: 6 },
-  { id: 'year', label: '연별', count: 5 },
+  { id: 'day', label: '일별', count: 14, noun: '하루', unit: '일' },
+  // 월별은 굴러가는 12개월이 아니라 그 해 1월~12월을 보여준다.
+  { id: 'month', label: '월별', count: 12, noun: '월', unit: '개월', calendarYear: true },
+  { id: 'quarter', label: '분기별', count: 8, noun: '분기', unit: '분기' },
+  { id: 'half', label: '반기별', count: 6, noun: '반기', unit: '반기' },
+  { id: 'year', label: '연별', count: 5, noun: '연', unit: '년' },
 ]
 
 export function granularity(id) {
@@ -45,10 +47,9 @@ export function bucketLabel(key, id) {
       const { m, d } = parts(key)
       return `${m}/${d}`
     }
-    case 'month': {
-      const [y, m] = key.split('-')
-      return Number(m) === 1 ? `${y.slice(2)}년 1월` : `${Number(m)}월`
-    }
+    case 'month':
+      // 1~12월을 한 해 단위로 보여주므로 축에는 숫자만 찍는다.
+      return String(Number(key.split('-')[1]))
     case 'quarter': {
       const [y, q] = key.split('-')
       return q === 'Q1' ? `${y.slice(2)}년 1Q` : `${q.replace('Q', '')}Q`
@@ -70,10 +71,9 @@ export function bucketLabel(key, id) {
  */
 export function bucketLabelWithYear(key, id) {
   switch (id) {
-    case 'month': {
-      const [y, m] = key.split('-')
-      return `${y.slice(2)}년 ${Number(m)}월`
-    }
+    case 'month':
+      // 월별은 연도를 붙이지 않는다 — 카드 제목이 이미 몇 년인지 말해 준다.
+      return bucketLabel(key, id)
     case 'quarter': {
       const [y, q] = key.split('-')
       return `${y.slice(2)}년 ${q.replace('Q', '')}Q`
@@ -105,12 +105,17 @@ export function bucketTitle(key, id) {
   }
 }
 
-/** 기준일에서 과거로 count 개의 연속된 버킷 키를 만든다(오래된 것 → 최신 순). */
-export function buildBuckets(id, count, anchorISO) {
+/**
+ * 기준일에서 과거로 count 개의 연속된 버킷 키를 만든다(오래된 것 → 최신 순).
+ * options.calendarYear 를 주면 월 단위는 기준일이 속한 해의 1월~12월을 만든다.
+ */
+export function buildBuckets(id, count, anchorISO, options = {}) {
   const { y, m, d } = parts(anchorISO)
   const keys = []
 
-  if (id === 'day') {
+  if (id === 'month' && options.calendarYear) {
+    for (let i = 1; i <= 12; i += 1) keys.push(`${y}-${pad(i)}`)
+  } else if (id === 'day') {
     const base = Date.UTC(y, m - 1, d)
     for (let i = count - 1; i >= 0; i -= 1) {
       const dt = new Date(base - i * 86400000)

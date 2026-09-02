@@ -40,8 +40,8 @@ test('buildBuckets(year) 는 최근 연도들을 만든다', () => {
 
 test('라벨은 사람이 읽는 형태다', () => {
   assert.equal(bucketLabel('2026-08-17', 'day'), '8/17')
-  assert.equal(bucketLabel('2026-08', 'month'), '8월')
-  assert.equal(bucketLabel('2026-01', 'month'), '26년 1월')
+  assert.equal(bucketLabel('2026-08', 'month'), '8')
+  assert.equal(bucketLabel('2026-01', 'month'), '1')
   assert.equal(bucketLabel('2026-H1', 'half'), '26년 상')
   assert.equal(bucketLabel('2026', 'year'), '2026년')
 })
@@ -49,4 +49,14 @@ test('라벨은 사람이 읽는 형태다', () => {
 test('shiftMonth 는 연도 경계를 넘는다', () => {
   assert.equal(shiftMonth('2026-01', -1), '2025-12')
   assert.equal(shiftMonth('2026-12', 1), '2027-01')
+})
+
+test('월별은 그 해 1월~12월을 만든다', () => {
+  const buckets = buildBuckets('month', 12, '2026-08-30', { calendarYear: true })
+  assert.equal(buckets.length, 12)
+  assert.equal(buckets[0].key, '2026-01')
+  assert.equal(buckets[11].key, '2026-12')
+  assert.deepEqual(buckets.map((b) => b.label), ['1','2','3','4','5','6','7','8','9','10','11','12'])
+  // 축 첫 라벨에도 연도를 붙이지 않는다
+  assert.equal(buckets[0].labelWithYear, '1')
 })

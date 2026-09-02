@@ -894,7 +894,7 @@ textarea {
 
 .chart text.bar-value {
   fill: var(--ink);
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -1462,4 +1462,68 @@ input.needs-input::placeholder {
   border: 1px solid var(--hairline);
   background: var(--page);
   color: var(--series-1);
+}
+
+/* --------------------- 한도 사용액 분해 (순수 생활비·용돈·고정비) --------------------- */
+
+.breakdown {
+  margin-top: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breakdown .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  width: auto;
+}
+
+.breakdown .row b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.breakdown .row.total {
+  border-top: 1px solid var(--hairline);
+  margin-top: 4px;
+  padding-top: 6px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+/* 설정 화면 용돈 목록 — 미터가 아니라 지정액만 보여준다(전액 사용 처리) */
+.allowance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.allowance-list .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: auto;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.allowance-list .row b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.allowance-list .hint {
+  margin-top: 2px;
 }

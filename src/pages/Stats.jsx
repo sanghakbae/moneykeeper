@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import TrendChart from '../components/TrendChart.jsx'
 import CategoryBars from '../components/CategoryBars.jsx'
 import { useApp } from '../context/AppContext.jsx'
@@ -15,9 +15,13 @@ export default function Stats() {
   const [categoryId, setCategoryId] = useState('all')
   const [showTable, setShowTable] = useState(false)
   const [detail, setDetail] = useState(false)
+  const [selectedKey, setSelectedKey] = useState('')
 
   const g = granularity(unit)
-  const buckets = useMemo(() => buildBuckets(unit, g.count, today), [unit, g.count, today])
+  const buckets = useMemo(
+    () => buildBuckets(unit, g.count, today, { calendarYear: g.calendarYear }),
+    [unit, g.count, g.calendarYear, today],
+  )
 
   const filtered = useMemo(
     () =>
@@ -34,15 +38,32 @@ export default function Stats() {
     [filtered, unit, buckets],
   )
 
-  // 아래 상세는 그래프에 그려진 기간 전체를 기준으로 한다.
-  const keys = useMemo(() => new Set(buckets.map((b) => b.key)), [buckets])
-  const inWindow = useMemo(
-    () => filtered.filter((e) => keys.has(bucketKey(e.date, unit))),
-    [filtered, unit, keys],
+  // 기간 단위를 바꾸면 오늘이 속한 구간으로 되돌린다.
+  // 월별은 1~12월을 다 그리므로 마지막 버킷(12월)이 아직 오지 않은 달일 수 있다.
+  const todayKey = bucketKey(today, unit)
+  const defaultKey = buckets.some((b) => b.key === todayKey)
+    ? todayKey
+    : buckets.length
+      ? buckets[buckets.length - 1].key
+      : ''
+  useEffect(() => {
+    setSelectedKey(defaultKey)
+  }, [unit, defaultKey])
+
+  // 아래 상세(카테고리별·사람별)는 그래프에서 고른 '한 구간' 만 본다.
+  // 월별이면 그 달, 분기별이면 그 분기 — 상단 필터와 어긋나지 않게.
+  const activeBucket =
+    buckets.find((b) => b.key === selectedKey) ||
+    buckets.find((b) => b.key === defaultKey) ||
+    null
+  const inBucket = useMemo(
+    () =>
+      activeBucket
+        ? filtered.filter((e) => bucketKey(e.date, unit) === activeBucket.key)
+        : [],
+    [filtered, unit, activeBucket],
   )
-  const windowTitle = buckets.length
-    ? `${buckets[0].title} ~ ${buckets[buckets.length - 1].title}`
-    : ''
+  const bucketTitle = activeBucket ? activeBucket.title : ''
 
   const totals = series.map((s) => s.total)
   const sum = totals.reduce((a, b) => a + b, 0)
@@ -50,12 +71,12 @@ export default function Stats() {
   const average = nonZero.length ? sum / nonZero.length : 0
   const peak = series.reduce((best, s) => (s.total > (best?.total || 0) ? s : best), null)
 
-  const members = useMemo(() => totalsByUser(inWindow), [inWindow])
+  const members = useMemo(() => totalsByUser(inBucket), [inBucket])
 
   // 기본은 그룹(식생활·이동·…) 단위 — 컬리·쿠팡·토스가 식생활로 묶여 보인다.
   const breakdown = useMemo(() => {
     if (detail) {
-      return totalsByCategory(inWindow).map((row) => ({
+      return totalsByCategory(inBucket).map((row) => ({
         id: row.categoryId,
         emoji: getCategory(row.categoryId).emoji,
         name: getCategory(row.categoryId).name,
@@ -63,7 +84,7 @@ export default function Stats() {
         share: row.share,
       }))
     }
-    return totalsByGroup(inWindow).map((row) => ({
+    return totalsByGroup(inBucket).map((row) => ({
       id: row.group,
       emoji: getCategory(row.topCategoryId).emoji,
       name: row.group,
@@ -71,7 +92,7 @@ export default function Stats() {
       total: row.total,
       share: row.share,
     }))
-  }, [inWindow, detail])
+  }, [inBucket, detail])
 
   return (
     <div className="screen">
@@ -152,25 +173,30 @@ export default function Stats() {
             </tbody>
           </table>
         ) : (
-          <TrendChart data={series} unitLabel={g.label} />
+          <TrendChart
+            data={series}
+            unitLabel={g.label}
+            selectedKey={activeBucket?.key}
+            onSelect={setSelectedKey}
+          />
         )}
         <p className="hint" style={{ marginTop: 6 }}>
-          막대를 누르면 그 구간 금액이 위에 표시됩니다.
+          막대를 누르면 아래 카테고리별·사람별이 그 구간 기준으로 바뀝니다.
         </p>
       </div>
 
       {/* 타일은 좁아서 전체 자릿수가 줄바꿈된다 — 압축 표기하고 정확한 값은 title 로 둔다 */}
       <div className="stat-row">
         <div className="stat">
-          <div className="label">합계</div>
+          <div className="label">{g.count}{g.unit} 합계</div>
           <div className="value" title={formatWon(sum)}>{compactWon(sum)}원</div>
         </div>
         <div className="stat">
-          <div className="label">{g.label} 평균</div>
+          <div className="label">{g.noun} 평균</div>
           <div className="value" title={formatWon(average)}>{compactWon(average)}원</div>
         </div>
         <div className="stat">
-          <div className="label">최대</div>
+          <div className="label">최대 {g.noun}</div>
           <div className="value" title={formatWon(peak?.total || 0)}>
             {compactWon(peak?.total || 0)}원
           </div>
@@ -185,7 +211,7 @@ export default function Stats() {
               {detail ? '묶어서 보기' : '자세히 보기'}
             </button>
           </div>
-          <p className="hint" style={{ marginBottom: 10 }}>{windowTitle}</p>
+          <p className="hint" style={{ marginBottom: 10 }}>{bucketTitle}</p>
           <CategoryBars rows={breakdown} limit={detail ? 30 : 12} />
         </div>
       )}
@@ -194,7 +220,7 @@ export default function Stats() {
         <div className="card">
           <div className="section-title">
             <span>사람별</span>
-            <span className="hint">{windowTitle}</span>
+            <span className="hint">{bucketTitle}</span>
           </div>
           <table className="data">
             <thead>
@@ -206,7 +232,7 @@ export default function Stats() {
             </thead>
             <tbody>
               {members.map((m) => {
-                const top = totalsByCategory(inWindow.filter((e) => e.username === m.username))[0]
+                const top = totalsByCategory(inBucket.filter((e) => e.username === m.username))[0]
                 return (
                   <tr key={m.username}>
                     <td>{displayName(m.username)}</td>

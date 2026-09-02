@@ -42,15 +42,14 @@ test('totalsByCategory 는 금액 순으로 비중과 함께 준다', () => {
   assert.equal(rows[1].share, 0.3)
 })
 
-test('고정비는 생활비에서 빠진다', () => {
+test('고정비도 생활비에 포함한다', () => {
   const rows = livingExpenses([
     expense('brpark', 'insurance', 100000, '2026-08-01'),
     expense('brpark', 'electricity', 50000, '2026-08-01'),
-    expense('brpark', 'gas', 30000, '2026-08-01'),
     expense('brpark', 'rent', 200000, '2026-08-01'),
     expense('brpark', 'food', 10000, '2026-08-01'),
   ])
-  assert.deepEqual(rows.map((r) => r.categoryId), ['food'])
+  assert.equal(rows.length, 4, '한도 제외로 표시한 것만 빠진다')
 })
 
 test("관리자가 '한도 제외'로 표시한 카테고리도 생활비에서 빠진다", () => {
@@ -84,27 +83,59 @@ test('budgetStatus 는 30% 남았을 때부터 경고한다', () => {
   assert.equal(budgetStatus(1000, 700).remaining, 300)
 })
 
-test('용돈이 있는 사람의 지출은 가족 생활비 한도에서 빠진다', () => {
+test('생활비 = 순수 생활비 + 용돈(지정액 전액) + 고정비', () => {
   const expenses = [
     expense('brpark', 'food', 300000, '2026-08-02'),
     expense('shbae', 'dining', 100000, '2026-08-03'),
-    expense('hgbae', 'coffee', 40000, '2026-08-04'),
-    expense('brpark', 'insurance', 200000, '2026-08-05'), // 고정비 — 어디에도 안 들어감
+    expense('hgbae', 'coffee', 40000, '2026-08-04'), // 용돈 멤버 — 생활비에 또 더하지 않는다
+    expense('brpark', 'insurance', 200000, '2026-08-05'), // 고정비
     expense('brpark', 'food', 999, '2026-07-31'), // 다른 달
   ]
   const report = monthlyBudgetReport(expenses, '2026-08', {
-    limit: 500000,
-    allowances: { hgbae: 50000 },
+    limit: 1000000,
+    allowances: { hgbae: 150000 },
   })
 
-  assert.equal(report.household.spent, 400000)
-  assert.equal(report.household.level, 'warn') // 80% 사용
-  assert.equal(report.excludedTotal, 200000)
+  // 400,000(엄마·아빠) + 150,000(용돈 지정액) + 200,000(고정비)
+  assert.deepEqual(report.breakdown, {
+    living: 400000,
+    allowance: 150000,
+    fixed: 200000,
+    total: 750000,
+  })
+  assert.equal(report.household.spent, 750000)
+  assert.equal(report.household.level, 'warn') // 75% 사용
 
-  assert.equal(report.allowances.length, 1)
+  // 참고값: 지정액과 실제 기록
   assert.equal(report.allowances[0].username, 'hgbae')
+  assert.equal(report.allowances[0].limit, 150000)
   assert.equal(report.allowances[0].spent, 40000)
-  assert.equal(report.allowances[0].level, 'warn') // 80% 사용
+})
+
+test('용돈은 실제로 얼마를 적었든 지정액만큼 센다', () => {
+  const base = { limit: 1000000, allowances: { hgbae: 150000 } }
+  const 기록없음 = monthlyBudgetReport([], '2026-08', base)
+  const 조금썼음 = monthlyBudgetReport(
+    [expense('hgbae', 'coffee', 5000, '2026-08-04')],
+    '2026-08',
+    base,
+  )
+  const 넘게썼음 = monthlyBudgetReport(
+    [expense('hgbae', 'coffee', 900000, '2026-08-04')],
+    '2026-08',
+    base,
+  )
+  assert.equal(기록없음.household.spent, 150000)
+  assert.equal(조금썼음.household.spent, 150000)
+  assert.equal(넘게썼음.household.spent, 150000)
+})
+
+test('용돈은 따로 경고하지 않는다 — 항상 전액 사용이라', () => {
+  const report = monthlyBudgetReport([], '2026-08', {
+    limit: 1000000,
+    allowances: { hgbae: 150000 },
+  })
+  assert.deepEqual(budgetAlerts(report), [])
 })
 
 test('한도를 넘으면 초과 경고가 나온다', () => {

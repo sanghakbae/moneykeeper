@@ -55,19 +55,54 @@ export default function Settings() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BudgetMeter
-            label="생활비 (고정비 제외)"
+            label="이번 달 생활비"
             status={report.household}
             hint={user.isAdmin ? '아래에서 한도를 정할 수 있어요.' : '아빠만 한도를 정할 수 있어요.'}
           />
-          {report.allowances.map((a) => (
-            <BudgetMeter key={a.username} label={`${displayName(a.username)} 용돈`} status={a} />
-          ))}
+          {report.allowances.length > 0 && (
+            <div className="allowance-list">
+              {report.allowances.map((a) => (
+                <div className="row" key={a.username}>
+                  <span>{displayName(a.username)} 용돈</span>
+                  <b>{formatWon(a.limit)}</b>
+                </div>
+              ))}
+              <p className="hint">
+                용돈은 준 순간 다 쓴 것으로 보고 지정액 전액을 생활비에 넣습니다.
+                {report.allowances.some((a) => a.spent > 0) &&
+                  ` (기록된 지출 ${formatWon(
+                    report.allowances.reduce((sum, a) => sum + a.spent, 0),
+                  )}은 중복으로 세지 않습니다)`}
+              </p>
+            </div>
+          )}
         </div>
 
-        <p className="hint" style={{ marginTop: 12 }}>
-          이번 달 고정비 {formatWon(report.excludedTotal)}은 한도 계산에서 빠집니다
-          (관리비·전기세·가스비·보험료 등 &apos;한도 제외&apos;로 표시된 카테고리).
-          한도의 30% 이하가 남으면 경고가 표시됩니다.
+        <div className="breakdown">
+          <div className="row">
+            <span>순수 생활비</span>
+            <b>{formatWon(report.breakdown.living)}</b>
+          </div>
+          <div className="row">
+            <span>용돈</span>
+            <b>{formatWon(report.breakdown.allowance)}</b>
+          </div>
+          <div className="row">
+            <span>고정비</span>
+            <b>{formatWon(report.breakdown.fixed)}</b>
+          </div>
+          <div className="row total">
+            <span>합계</span>
+            <b>{formatWon(report.breakdown.total)}</b>
+          </div>
+        </div>
+
+        <p className="hint" style={{ marginTop: 10 }}>
+          고정비와 용돈까지 모두 한도에 포함해 계산합니다.
+          {report.excludedTotal > 0
+            ? ` 관리자가 '한도 제외'로 표시한 ${formatWon(report.excludedTotal)}만 빠집니다.`
+            : ''}
+          {' '}한도의 30% 이하가 남으면 경고가 표시됩니다.
         </p>
 
         {user.isAdmin && (
@@ -188,8 +223,8 @@ function BudgetSheet({ month, budget, user, notify, onClose }) {
             <span>원</span>
           </div>
           <p className="hint" style={{ marginTop: 6 }}>
-            {limit ? `${formatNumber(Number(limit))}원` : '0원'} · 보험료·전기세·가스비·관리비 등
-            고정비는 빼고 계산합니다.
+            {limit ? `${formatNumber(Number(limit))}원` : '0원'} · 고정비와 용돈을 포함한
+            그 달 지출 전체를 셉니다.
           </p>
         </div>
 
@@ -214,8 +249,8 @@ function BudgetSheet({ month, budget, user, notify, onClose }) {
             </div>
           ))}
           <p className="hint">
-            용돈을 정한 사람의 지출은 용돈 한도로 계산하고, 가족 생활비 한도에서는 빼서 중복으로
-            세지 않습니다.
+            용돈을 정한 사람의 지출은 그 사람 용돈 한도로 세고, 가족 생활비 한도에도 함께
+            들어갑니다.
           </p>
         </div>
 

@@ -1,7 +1,7 @@
 // 집계·한도 계산. 브라우저 API 를 쓰지 않는 순수 함수라 node --test 로 검증한다.
 
 import { bucketKey } from './periods.js'
-import { getCategory, isOffBudget } from './categories.js'
+import { getCategory, isFixedCost, isOffBudget } from './categories.js'
 
 /** 한도의 30% 가 남았을 때부터 경고 → 사용률 70% 이상이면 warn, 100% 이상이면 over */
 export const WARN_RATIO = 0.7
@@ -71,8 +71,9 @@ export function totalsByUser(expenses) {
 }
 
 /**
- * 생활비(변동비)만 남긴다.
- * 보험료·전기세·가스비·관리비 등 고정비와 용돈은 한도에서 뺀다.
+ * 한도에 셀 지출만 남긴다.
+ * 기본은 전부 포함 — 고정비도 용돈도 생활비에 들어간다.
+ * 관리자가 '한도 제외'로 표시한 카테고리만 뺀다.
  */
 export function livingExpenses(expenses) {
   return expenses.filter((e) => !isOffBudget(e.categoryId))
@@ -96,11 +97,14 @@ export function budgetStatus(limit, spent) {
 }
 
 /**
- * 한 달치 한도 현황.
+ * 한 달치 한도 현황. 기준은 하나 — 가구 생활비다.
  *
- * - 고정비 카테고리는 어느 한도에도 포함하지 않는다.
- * - 용돈이 지정된 멤버의 지출은 그 멤버의 용돈 한도로만 계산하고,
- *   가구 생활비 한도에서는 빼서 이중 계산을 막는다.
+ * 사용액 = 순수 생활비 + 용돈 + 고정비
+ *   - 순수 생활비: 용돈을 받지 않는 사람의 비고정 지출
+ *   - 용돈: **지정액 전액**. 준 순간 나간 돈으로 본다. 그래서 용돈 받는 사람의
+ *     개별 지출은 여기서 빼야 이중으로 세지 않는다.
+ *   - 고정비: 고정비 카테고리 지출
+ * 관리자가 '한도 제외'로 표시한 카테고리만 어느 쪽에도 들어가지 않는다.
  */
 export function monthlyBudgetReport(expenses, ym, budget) {
   const limit = Number(budget?.limit) || 0
@@ -108,26 +112,33 @@ export function monthlyBudgetReport(expenses, ym, budget) {
   const living = livingExpenses(inMonth(expenses, ym))
 
   const allowanceUsers = Object.keys(allowances).filter((u) => Number(allowances[u]) > 0)
-  const householdSpent = living
-    .filter((e) => !allowanceUsers.includes(e.username))
-    .reduce((sum, e) => sum + (e.amount || 0), 0)
+  const sum = (rows) => rows.reduce((total, e) => total + (e.amount || 0), 0)
+
+  const fixedTotal = sum(living.filter((e) => isFixedCost(e.categoryId)))
+  // 용돈은 전액 쓴 것으로 처리하므로, 용돈 받는 사람의 지출은 생활비에서 뺀다.
+  const livingTotal = sum(
+    living.filter((e) => !isFixedCost(e.categoryId) && !allowanceUsers.includes(e.username)),
+  )
+  const allowanceTotal = allowanceUsers.reduce((total, u) => total + Number(allowances[u]), 0)
+  const householdSpent = livingTotal + allowanceTotal + fixedTotal
 
   return {
     month: ym,
     household: budgetStatus(limit, householdSpent),
+    breakdown: {
+      living: livingTotal,
+      allowance: allowanceTotal,
+      fixed: fixedTotal,
+      total: householdSpent,
+    },
+    // 참고용 — 지정액과, 그 사람이 실제로 적어 둔 지출.
     allowances: allowanceUsers.map((username) => ({
       username,
-      ...budgetStatus(
-        allowances[username],
-        living
-          .filter((e) => e.username === username)
-          .reduce((sum, e) => sum + (e.amount || 0), 0),
-      ),
+      limit: Number(allowances[username]),
+      spent: sum(living.filter((e) => e.username === username)),
     })),
-    // 한도에서 빠진 금액(고정비 + 용돈) — 설정 화면에서 얼마가 빠졌는지 보여준다.
-    excludedTotal: inMonth(expenses, ym)
-      .filter((e) => isOffBudget(e.categoryId))
-      .reduce((sum, e) => sum + (e.amount || 0), 0),
+    // '한도 제외'로 빠진 금액 — 설정 화면에서 얼마가 빠졌는지 보여준다(보통 0원).
+    excludedTotal: sum(inMonth(expenses, ym).filter((e) => isOffBudget(e.categoryId))),
   }
 }
 
@@ -149,7 +160,7 @@ export function budgetAlerts(report, nameOf = (u) => u) {
       })
     }
   }
+  // 용돈은 전액 사용으로 보므로 따로 경고하지 않는다 — 항상 100% 라 소음만 된다.
   push('이번 달 생활비', report.household)
-  for (const a of report.allowances) push(`${nameOf(a.username)} 용돈`, a)
   return alerts
 }

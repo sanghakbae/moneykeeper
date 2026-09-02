@@ -8,7 +8,7 @@ import { addExpense } from '../lib/store.js'
 import { formatNumber, formatWon, josa, todayISO } from '../lib/format.js'
 import { budgetAlerts, monthlyBudgetReport } from '../lib/stats.js'
 import { displayName } from '../lib/accounts.js'
-import { isOffBudget, offBudgetTag } from '../lib/categories.js'
+import { isOffBudget } from '../lib/categories.js'
 
 export default function Add() {
   const { user, expenses, budgets, notify, today } = useApp()
@@ -26,10 +26,8 @@ export default function Add() {
   )
   const alerts = useMemo(() => budgetAlerts(report, displayName), [report])
 
-  const myAllowance = report.allowances.find((a) => a.username === user.username)
-  const meter = myAllowance
-    ? { label: `${user.name} 용돈`, status: myAllowance }
-    : { label: '이번 달 생활비', status: report.household }
+  // 입력 화면은 항상 가구 생활비 기준이다. 용돈은 전액 쓴 것으로 이미 여기 포함돼 있다.
+  const meter = { label: '이번 달 생활비', status: report.household }
 
   // 금액·카테고리·메모는 모두 필수다. 하나라도 비면 저장 버튼을 막고 무엇이 빠졌는지 알려준다.
   const missing = []
@@ -76,7 +74,7 @@ export default function Add() {
       <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
       {categoryId && isOffBudget(categoryId) && (
-        <p className="hint">{offBudgetTag(categoryId)}라 생활비 한도에는 포함되지 않습니다.</p>
+        <p className="hint">&apos;한도 제외&apos;로 표시된 카테고리라 생활비 한도에 세지 않습니다.</p>
       )}
 
       <div className="card" style={{ display: 'flex', gap: 8 }}>
