@@ -8,7 +8,7 @@ import { addExpense } from '../lib/store.js'
 import { formatNumber, formatWon, josa, todayISO } from '../lib/format.js'
 import { budgetAlerts, monthlyBudgetReport } from '../lib/stats.js'
 import { displayName } from '../lib/accounts.js'
-import { isOffBudget } from '../lib/categories.js'
+import { isFixedCost, isOffBudget } from '../lib/categories.js'
 
 export default function Add() {
   const { user, expenses, budgets, notify, today } = useApp()
@@ -26,7 +26,7 @@ export default function Add() {
   )
   const alerts = useMemo(() => budgetAlerts(report, displayName), [report])
 
-  // 입력 화면은 항상 가구 생활비 기준이다. 용돈은 전액 쓴 것으로 이미 여기 포함돼 있다.
+  // 입력 화면은 순수 생활비만 본다. 고정비도 등록은 되지만 이 게이지에는 안 들어간다.
   const meter = { label: '이번 달 생활비', status: report.household }
 
   // 금액·카테고리·메모는 모두 필수다. 하나라도 비면 저장 버튼을 막고 무엇이 빠졌는지 알려준다.
@@ -73,8 +73,8 @@ export default function Add() {
 
       <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
-      {categoryId && isOffBudget(categoryId) && (
-        <p className="hint">&apos;한도 제외&apos;로 표시된 카테고리라 생활비 한도에 세지 않습니다.</p>
+      {categoryId && (isOffBudget(categoryId) || isFixedCost(categoryId)) && (
+        <p className="hint">고정비라 생활비 한도에는 세지 않고 통계에만 반영됩니다.</p>
       )}
 
       <div className="card" style={{ display: 'flex', gap: 8 }}>

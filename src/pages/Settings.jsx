@@ -67,40 +67,29 @@ export default function Settings() {
                   <b>{formatWon(a.limit)}</b>
                 </div>
               ))}
-              <p className="hint">
-                용돈은 준 순간 다 쓴 것으로 보고 지정액 전액을 생활비에 넣습니다.
-                {report.allowances.some((a) => a.spent > 0) &&
-                  ` (기록된 지출 ${formatWon(
-                    report.allowances.reduce((sum, a) => sum + a.spent, 0),
-                  )}은 중복으로 세지 않습니다)`}
-              </p>
             </div>
           )}
         </div>
 
         <div className="breakdown">
-          <div className="row">
-            <span>순수 생활비</span>
+          <div className="row total">
+            <span>생활비 (한도 대상)</span>
             <b>{formatWon(report.breakdown.living)}</b>
           </div>
           <div className="row">
-            <span>용돈</span>
-            <b>{formatWon(report.breakdown.allowance)}</b>
-          </div>
-          <div className="row">
-            <span>고정비</span>
+            <span>고정비 (한도 제외)</span>
             <b>{formatWon(report.breakdown.fixed)}</b>
           </div>
-          <div className="row total">
-            <span>합계</span>
-            <b>{formatWon(report.breakdown.total)}</b>
+          <div className="row">
+            <span>용돈 (한도 제외)</span>
+            <b>{formatWon(report.breakdown.allowance)}</b>
           </div>
         </div>
 
         <p className="hint" style={{ marginTop: 10 }}>
-          고정비와 용돈까지 모두 한도에 포함해 계산합니다.
+          한도는 생활비만 셉니다. 고정비와 용돈은 한도에서 빠지고 통계에만 반영됩니다.
           {report.excludedTotal > 0
-            ? ` 관리자가 '한도 제외'로 표시한 ${formatWon(report.excludedTotal)}만 빠집니다.`
+            ? ` 여기에 '한도 제외'로 표시한 ${formatWon(report.excludedTotal)}도 빠집니다.`
             : ''}
           {' '}한도의 30% 이하가 남으면 경고가 표시됩니다.
         </p>
